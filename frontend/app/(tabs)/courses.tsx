@@ -11,7 +11,7 @@ Modal,
 Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { BookOpen, ChevronRight, Award, Plus, X, Check, AlertCircle } from 'lucide-react-native';
+import { BookOpen, ChevronRight, Award, Plus, X, Check, AlertCircle, GraduationCap } from 'lucide-react-native';
 import { COLORS, SIZES, TYPOGRAPHY } from '../../src/constants/theme';
 import axiosClient from '../../src/api/axiosClient';
 import { Enrollment, Course } from '../../src/types';
@@ -129,15 +129,21 @@ return (
     <View style={styles.container}>
     {/* Screen Header + Action Button */}
     <View style={styles.screenHeader}>
-        <View>
+        <View style={{ flex: 1, marginRight: 8 }}>
         <Text style={styles.screenTitle}>Môn học của tôi</Text>
         <Text style={styles.screenSub}>Quản lý khóa học & theo dõi tiến độ</Text>
         </View>
 
-        <TouchableOpacity style={styles.addCourseBtn} onPress={openEnrollModal}>
-        <Plus size={18} color={COLORS.surface} />
-        <Text style={styles.addCourseText}>Đăng ký môn</Text>
-        </TouchableOpacity>
+        <View style={styles.headerBtnGroup}>
+          <TouchableOpacity style={styles.gradesBtn} onPress={() => router.push('/grades' as any)}>
+            <GraduationCap size={16} color={COLORS.primary} />
+            <Text style={styles.gradesBtnText}>Bảng điểm</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addCourseBtn} onPress={openEnrollModal}>
+            <Plus size={16} color={COLORS.surface} />
+            <Text style={styles.addCourseText}>Đăng ký môn</Text>
+          </TouchableOpacity>
+        </View>
     </View>
 
     {errorMsg ? (
@@ -224,10 +230,13 @@ container: { flex: 1, backgroundColor: COLORS.background },
 centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
 loadingText: { marginTop: SIZES.m, color: COLORS.textSecondary, fontSize: 14 },
 screenHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SIZES.m, paddingTop: SIZES.l, paddingBottom: SIZES.m },
-screenTitle: {  fontSize: 28,fontWeight: '700',color: COLORS.text,},
+screenTitle: {  fontSize: 24, fontWeight: '700', color: COLORS.text },
 screenSub: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
-addCourseBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary, paddingHorizontal: SIZES.m, paddingVertical: 8, borderRadius: SIZES.radius },
-addCourseText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 13 },
+headerBtnGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+gradesBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryLight, paddingHorizontal: SIZES.s, paddingVertical: 8, borderRadius: SIZES.radius, borderWidth: 1, borderColor: COLORS.primary + '30' },
+gradesBtnText: { color: COLORS.primary, fontWeight: 'bold', fontSize: 12 },
+addCourseBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary, paddingHorizontal: SIZES.s, paddingVertical: 8, borderRadius: SIZES.radius },
+addCourseText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 12 },
 listContent: { padding: SIZES.m, paddingBottom: SIZES.xl },
 courseCard: { backgroundColor: COLORS.surface, borderRadius: SIZES.radius, padding: SIZES.m, marginBottom: SIZES.m, borderWidth: 1, borderColor: COLORS.border },
 cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SIZES.s },

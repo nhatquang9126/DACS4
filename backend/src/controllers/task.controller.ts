@@ -15,15 +15,22 @@ status: z.enum(['TODO', 'IN_PROGRESS', 'DONE'], { error: 'Trạng thái không h
 });
 
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
-try {
+  try {
     const tasks = await prisma.task.findMany({
-    where: { user_id: req.user!.id },
-    orderBy: { due_date: 'asc' },
+      where: { user_id: req.user!.id },
+      include: {
+        enrollment: {
+          include: {
+            course: true,
+          },
+        },
+      },
+      orderBy: { due_date: 'asc' },
     });
     res.status(200).json(tasks);
-} catch (error) {
+  } catch (error) {
     res.status(500).json({ message: 'Lỗi khi truy xuất danh sách nhiệm vụ' });
-}
+  }
 };
 
 export const createTask = async (req: AuthRequest, res: Response): Promise<void> => {

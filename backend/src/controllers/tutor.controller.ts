@@ -6,18 +6,20 @@ import { askAITutor } from '../services/ai.service';
 
 const positiveIntParam = z.coerce.number().int().positive();
 
-// 1. POST /api/tutor/chat - Trò chuyện với AI
+// 1. POST /api/tutor/chat - Trò chuyện với AI (kèm Conversational Memory & Ngữ cảnh môn học)
 export const chatWithTutor = async (req: AuthRequest, res: Response): Promise<void> => {
-try {
-    const { session_id, message } = z.object({
-    session_id: z.number().int().positive().optional(),
-    message: z.string().min(1),
-    }).parse(req.body);
-    
+  try {
+    const { session_id, message } = z
+      .object({
+        session_id: z.number().int().positive().optional(),
+        message: z.string().min(1, 'Nội dung tin nhắn không được để trống'),
+      })
+      .parse(req.body);
+
     const userId = req.user!.id;
     let sessionId = session_id;
 
-    // Kiểm tra quyền sở hữu phiên chat hoặc tạo session mới
+    // 1. Kiểm tra quyền sở hữu phiên chat hoặc tạo session mới
     if (sessionId) {
       const existingSession = await prisma.tutorSession.findFirst({
         where: { id: sessionId, user_id: userId },
@@ -33,23 +35,47 @@ try {
       sessionId = newSession.id;
     }
 
-    // Lưu tin nhắn của User
-    await prisma.tutorMessage.create({
-    data: { session_id: sessionId, sender: 'USER', content: message }
+    // 2. Lấy tối đa 8 tin nhắn gần nhất của phiên này để làm conversational memory
+    const previousMessages = await prisma.tutorMessage.findMany({
+      where: { session_id: sessionId },
+      orderBy: { created_at: 'asc' },
+      take: 8,
     });
 
-    // Gọi AI Service
-    const aiReply = await askAITutor(message);
+    const historyPayload = previousMessages.map((m) => ({
+      sender: m.sender as 'USER' | 'AI',
+      content: m.content,
+    }));
 
-    // Lưu tin nhắn của AI
+    // 3. Lấy danh sách các môn học sinh viên đang đăng ký
+    const enrollments = await prisma.enrollment.findMany({
+      where: { user_id: userId, status: 'ACTIVE' },
+      include: { course: true },
+    });
+    const enrolledCourses = enrollments.map((e) => `${e.course.code} - ${e.course.name}`);
+
+    // 4. Lưu tin nhắn của User
+    await prisma.tutorMessage.create({
+      data: { session_id: sessionId, sender: 'USER', content: message },
+    });
+
+    // 5. Gọi AI Service kèm lịch sử hội thoại và ngữ cảnh môn học
+    const aiReply = await askAITutor(message, undefined, historyPayload, enrolledCourses);
+
+    // 6. Lưu tin nhắn của AI
     const aiMessage = await prisma.tutorMessage.create({
-    data: { session_id: sessionId, sender: 'AI', content: aiReply }
+      data: { session_id: sessionId, sender: 'AI', content: aiReply },
     });
 
     res.status(200).json({ session_id: sessionId, reply: aiMessage });
-} catch (error) {
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Dữ liệu không hợp lệ', errors: error.issues });
+      return;
+    }
+    console.error('Lỗi khi chat với Gia sư AI:', error.message);
     res.status(500).json({ message: 'Lỗi khi chat với AI' });
-}
+  }
 };
 
 // 2. POST /api/tutor/explain - Giải thích một khái niệm hoặc câu hỏi sai
