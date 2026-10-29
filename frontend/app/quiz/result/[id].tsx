@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-View,
-Text,
-StyleSheet,
-ScrollView,
-TouchableOpacity,
-ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Award, CheckCircle, XCircle, Target, ArrowRight, RotateCcw } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, TYPOGRAPHY } from '../../../src/constants/theme';
 import axiosClient from '../../../src/api/axiosClient';
 import { QuizAttemptResult, SkillBreakdownItem } from '../../../src/types';
 
 export default function QuizResultScreen() {
-const { id } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams();
 const router = useRouter();
 
 const [attempt, setAttempt] = useState<QuizAttemptResult | null>(null);
@@ -81,8 +83,18 @@ if (errorMsg || !attempt) {
 const skillData = parseSkillBreakdown(attempt.skill_breakdown);
 const isPassed = attempt.score >= 5.0;
 
-return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: Math.max(insets.top, SIZES.m),
+          paddingBottom: Math.max(insets.bottom, 16) + 32,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
     {/* Card Thống kê Điểm số Lớn */}
     <View style={[styles.scoreCard, isPassed ? styles.scoreCardPass : styles.scoreCardFail]}>
         <Award size={48} color={isPassed ? COLORS.success : COLORS.error} />

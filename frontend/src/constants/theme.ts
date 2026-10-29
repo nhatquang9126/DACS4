@@ -54,8 +54,10 @@ export const TYPOGRAPHY = {
   h1: { fontSize: 24, fontWeight: '700' as const, color: COLORS.text, letterSpacing: -0.5 },
   h2: { fontSize: 20, fontWeight: '700' as const, color: COLORS.text, letterSpacing: -0.3 },
   h3: { fontSize: 16, fontWeight: '600' as const, color: COLORS.text },
+  titleMedium: { fontSize: 18, fontWeight: '700' as const, color: COLORS.text },
   body: { fontSize: 14, fontWeight: '400' as const, color: COLORS.text, lineHeight: 20 },
   bodyMedium: { fontSize: 14, fontWeight: '500' as const, color: COLORS.text, lineHeight: 20 },
+  bodySmall: { fontSize: 13, fontWeight: '400' as const, color: COLORS.textSecondary, lineHeight: 18 },
   caption: { fontSize: 12, fontWeight: '400' as const, color: COLORS.textSecondary, lineHeight: 16 },
   captionBold: { fontSize: 12, fontWeight: '600' as const, color: COLORS.textSecondary },
 };

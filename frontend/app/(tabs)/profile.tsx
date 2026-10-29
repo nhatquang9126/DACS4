@@ -27,13 +27,15 @@ Shield,
 ChevronRight,
 } from 'lucide-react-native';
 import { COLORS, SIZES, TYPOGRAPHY } from '../../src/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 import axiosClient from '../../src/api/axiosClient';
 import { LearningStatistics, StudySession } from '../../src/types';
 
 export default function ProfileScreen() {
-const router = useRouter();
-const { user, logout } = useAuth();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { user, logout } = useAuth();
 
 // Quản lý trạng thái Thống kê & Lịch sử
 const [stats, setStats] = useState<LearningStatistics | null>(null);
@@ -167,11 +169,18 @@ if (loading && !refreshing) {
     );
 }
 
-return (
+  return (
     <ScrollView
-    style={styles.container}
-    contentContainerStyle={styles.content}
-    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: Math.max(insets.top, SIZES.m),
+          paddingBottom: SIZES.xl + 24,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
     >
     {/* Header Hồ sơ Sinh viên */}
     <View style={styles.profileCard}>

@@ -1,23 +1,25 @@
 import React, { useState, useCallback } from 'react';
 import {
-View,
-Text,
-StyleSheet,
-FlatList,
-TouchableOpacity,
-ActivityIndicator,
-RefreshControl,
-Modal,
-Alert,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Modal,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { BookOpen, ChevronRight, Award, Plus, X, Check, AlertCircle, GraduationCap } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, TYPOGRAPHY } from '../../src/constants/theme';
 import axiosClient from '../../src/api/axiosClient';
 import { Enrollment, Course } from '../../src/types';
 
 export default function CoursesScreen() {
-const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
 
 const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
 const [catalog, setCatalog] = useState<Course[]>([]);
@@ -125,13 +127,13 @@ if (loading && !refreshing) {
     );
 }
 
-return (
-    <View style={styles.container}>
-    {/* Screen Header + Action Button */}
-    <View style={styles.screenHeader}>
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Screen Header + Action Button */}
+      <View style={styles.screenHeader}>
         <View style={{ flex: 1, marginRight: 8 }}>
-        <Text style={styles.screenTitle}>Môn học của tôi</Text>
-        <Text style={styles.screenSub}>Quản lý khóa học & theo dõi tiến độ</Text>
+          <Text style={styles.screenTitle}>Môn học của tôi</Text>
+          <Text style={styles.screenSub}>Quản lý khóa học & theo dõi tiến độ</Text>
         </View>
 
         <View style={styles.headerBtnGroup}>
@@ -144,33 +146,33 @@ return (
             <Text style={styles.addCourseText}>Đăng ký môn</Text>
           </TouchableOpacity>
         </View>
-    </View>
+      </View>
 
-    {errorMsg ? (
+      {errorMsg ? (
         <View style={styles.errorCard}>
-        <AlertCircle color={COLORS.error} size={20} />
-        <Text style={styles.errorText}>{errorMsg}</Text>
+          <AlertCircle color={COLORS.error} size={20} />
+          <Text style={styles.errorText}>{errorMsg}</Text>
         </View>
-    ) : null}
+      ) : null}
 
-    <FlatList
+      <FlatList
         data={enrollments}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderCourseItem}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: SIZES.xl + 24 }]}
         refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchMyEnrollments(); }} colors={[COLORS.primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchMyEnrollments(); }} colors={[COLORS.primary]} />
         }
         ListEmptyComponent={
-        <View style={styles.emptyCard}>
+          <View style={styles.emptyCard}>
             <BookOpen size={48} color={COLORS.textSecondary} />
             <Text style={styles.emptyTitle}>Chưa có môn học nào</Text>
             <Text style={styles.emptyDesc}>
-            Bấm nút "Đăng ký môn" ở góc trên để chọn môn học trong học kỳ này.
+              Bấm nút "Đăng ký môn" ở góc trên để chọn môn học trong học kỳ này.
             </Text>
-        </View>
+          </View>
         }
-    />
+      />
 
     {/* Modal Danh mục Môn học để Đăng ký */}
     <Modal visible={modalVisible} animationType="slide" transparent>

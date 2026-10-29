@@ -1,32 +1,34 @@
 
 import React, { useState, useCallback } from 'react';
 import {
-View,
-Text,
-StyleSheet,
-ScrollView,
-TouchableOpacity,
-ActivityIndicator,
-RefreshControl,
-Alert,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
-Target,
-CheckCircle2,
-Clock,
-AlertTriangle,
-ArrowRight,
-Sparkles,
-BookOpen,
-RefreshCw,
+  Target,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  ArrowRight,
+  Sparkles,
+  BookOpen,
+  RefreshCw,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES } from '../../src/constants/theme';
 import axiosClient from '../../src/api/axiosClient';
 import { StudyPlanItem } from '../../src/types';
 
 export default function StudyPlanScreen() {
-const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
 
 const [items, setItems] = useState<StudyPlanItem[]>([]);
 const [loading, setLoading] = useState(true);
@@ -162,31 +164,31 @@ if (loading && !refreshing) {
     );
 }
 
-return (
-    <View style={styles.container}>
-    <View style={styles.header}>
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-        <Target color={COLORS.primary} size={28} />
-        <Text style={styles.screenTitle}>
+          <Target color={COLORS.primary} size={28} />
+          <Text style={styles.screenTitle}>
             Lộ trình cá nhân hóa
-        </Text>
+          </Text>
         </View>
 
         <Text style={styles.screenSub}>
-        Nhiệm vụ được đề xuất dựa trên tiến độ và kỹ năng học tập của bạn.
+          Nhiệm vụ được đề xuất dựa trên tiến độ và kỹ năng học tập của bạn.
         </Text>
-    </View>
+      </View>
 
-    <ScrollView
-        contentContainerStyle={styles.content}
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: SIZES.xl + 24 }]}
         refreshControl={
-        <RefreshControl
+          <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[COLORS.primary]}
-        />
+          />
         }
-    >
+      >
         {errorMsg ? (
         <View style={styles.errorCard}>
             <Text style={styles.errorText}>{errorMsg}</Text>

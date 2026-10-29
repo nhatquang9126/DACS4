@@ -3,39 +3,48 @@ import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
 import { COLORS } from '../src/constants/theme';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 function RootLayoutNav() {
-const { user, isLoading } = useAuth();
-const segments = useSegments();
-const router = useRouter();
+  const { user, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
-useEffect(() => {
-if (isLoading) return;
+  useEffect(() => {
+    if (isLoading) return;
 
-const inAuthGroup = (segments as string[])[0] === '(auth)';
+    const inAuthGroup = (segments as string[])[0] === '(auth)';
 
-if (!user && !inAuthGroup) {
-    router.replace('/(auth)/login' as any);
-} else if (user && inAuthGroup) {
-    router.replace('/(tabs)');
-}
-}, [user, isLoading, segments, router]);
+    if (!user && !inAuthGroup) {
+      router.replace('/(auth)/login' as any);
+    } else if (user && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [user, isLoading, segments, router]);
 
-if (isLoading) {
+  if (isLoading) {
     return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-    </View>
+      </View>
     );
-}
+  }
 
-return <Slot />;
+  return (
+    <>
+      <StatusBar style="dark" />
+      <Slot />
+    </>
+  );
 }
 
 export default function RootLayout() {
-return (
-    <AuthProvider>
-    <RootLayoutNav />
-    </AuthProvider>
-);
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </SafeAreaProvider>
+  );
 }

@@ -21,10 +21,12 @@ import {
   TrendingUp,
 } from 'lucide-react-native';
 import { COLORS, SIZES } from '../../src/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axiosClient from '../../src/api/axiosClient';
 import { Enrollment } from '../../src/types';
 
 export default function GradesScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -93,7 +95,7 @@ export default function GradesScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -104,7 +106,8 @@ export default function GradesScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) + 32 }]}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
       >
         {errorMsg ? (

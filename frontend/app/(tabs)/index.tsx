@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Clock,
   BookOpen,
@@ -40,6 +41,7 @@ interface DayStudyData {
 }
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -196,7 +198,13 @@ export default function DashboardScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: Math.max(insets.top, SIZES.m),
+          paddingBottom: SIZES.xxl + 24,
+        },
+      ]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
     >

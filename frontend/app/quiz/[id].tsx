@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-View,
-Text,
-StyleSheet,
-ScrollView,
-TouchableOpacity,
-ActivityIndicator,
-Alert,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Clock, CheckCircle, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, TYPOGRAPHY } from '../../src/constants/theme';
 import axiosClient from '../../src/api/axiosClient';
 import { QuizDetail } from '../../src/types';
@@ -17,7 +18,8 @@ import { QuizDetail } from '../../src/types';
 const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export default function QuizScreen() {
-const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
 const router = useRouter();
 
 const [quiz, setQuiz] = useState<QuizDetail | null>(null);
@@ -179,38 +181,41 @@ const currentQuestion = quiz.questions[currentIndex];
 const optionsList = parseOptions(currentQuestion.options);
 const isSelected = selectedAnswers[currentQuestion.id];
 
-return (
-    <View style={styles.container}>
-    {/* Top Header */}
-    <View style={styles.header}>
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Top Header */}
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} disabled={submitting}>
-        <ArrowLeft size={24} color={COLORS.text} />
+          <ArrowLeft size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-        {quiz.title}
+          {quiz.title}
         </Text>
         <View style={styles.timerBadge}>
-        <Clock size={16} color={COLORS.error} />
-        <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+          <Clock size={16} color={COLORS.error} />
+          <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
         </View>
-    </View>
+      </View>
 
-    {/* Progress Bar */}
-    <View style={styles.progressContainer}>
+      {/* Progress Bar */}
+      <View style={styles.progressContainer}>
         <View style={styles.progressTrack}>
-        <View
+          <View
             style={[
-            styles.progressBar,
-            { width: `${((currentIndex + 1) / quiz.questions.length) * 100}%` },
+              styles.progressBar,
+              { width: `${((currentIndex + 1) / quiz.questions.length) * 100}%` },
             ]}
-        />
+          />
         </View>
         <Text style={styles.progressText}>
-        Câu {currentIndex + 1}/{quiz.questions.length}
+          Câu {currentIndex + 1}/{quiz.questions.length}
         </Text>
-    </View>
+      </View>
 
-    <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: 24 }]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Câu hỏi */}
         <View style={styles.questionCard}>
         <View style={styles.tagBadge}>
@@ -248,8 +253,8 @@ return (
         </View>
     </ScrollView>
 
-    {/* Footer Điều hướng */}
-    <View style={styles.footer}>
+      {/* Footer Điều hướng */}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
         <TouchableOpacity
         style={[styles.navBtn, currentIndex === 0 && styles.navBtnDisabled]}
         disabled={currentIndex === 0}

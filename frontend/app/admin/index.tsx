@@ -26,6 +26,7 @@ import {
   Search,
 } from 'lucide-react-native';
 import { COLORS, SIZES } from '../../src/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axiosClient from '../../src/api/axiosClient';
 
 interface StudentItem {
@@ -52,6 +53,7 @@ interface AnalyticsData {
 }
 
 export default function AdminScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'MONITOR' | 'CONTENT'>('MONITOR');
@@ -218,7 +220,7 @@ export default function AdminScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -251,7 +253,8 @@ export default function AdminScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) + 32 }]}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
       >
         {activeTab === 'MONITOR' ? (

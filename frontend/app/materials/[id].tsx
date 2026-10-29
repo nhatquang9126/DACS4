@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-View,
-Text,
-StyleSheet,
-ScrollView,
-TouchableOpacity,
-ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, BookOpenCheck } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, TYPOGRAPHY } from '../../src/constants/theme';
 import axiosClient from '../../src/api/axiosClient';
 import { Material } from '../../src/types';
 
 export default function MaterialReaderScreen() {
-const { id } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams();
 const router = useRouter();
 
 const [material, setMaterial] = useState<Material | null>(null);
@@ -84,19 +86,22 @@ if (loading) {
     );
 }
 
-return (
-    <View style={styles.container}>
-    <View style={styles.header}>
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <ArrowLeft size={24} color={COLORS.text} />
+          <ArrowLeft size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-        Tài liệu học tập
+          Tài liệu học tập
         </Text>
         <View style={{ width: 24 }} />
-    </View>
+      </View>
 
-    <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) + 32 }]}
+        showsVerticalScrollIndicator={false}
+      >
         {errorMsg ? (
         <View style={styles.errorCard}>
             <Text style={styles.errorText}>{errorMsg}</Text>
