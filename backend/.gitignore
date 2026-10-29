@@ -1,0 +1,207 @@
+
+# ==================================================
+# SmartStudy AI - Root .gitignore
+# Frontend: Expo / React Native / TypeScript
+# Backend: Node.js / Express / Prisma
+# AI Service: Python / FastAPI / Scikit-learn
+# ==================================================
+
+
+# ==================================================
+# 1. ENVIRONMENT VARIABLES AND SECRETS
+# ==================================================
+
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Ignore environment files in all subdirectories
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+
+# ==================================================
+# 2. EDITOR HISTORY AND LOCAL BACKUPS
+# ==================================================
+
+.history/
+**/.history/
+
+.git_backup/
+**/.git_backup/
+
+# Temporary editor and backup files
+*.bak
+*.tmp
+*~
+*.swp
+*.swo
+
+
+# ==================================================
+# 3. NODE.JS DEPENDENCIES
+# ==================================================
+
+node_modules/
+**/node_modules/
+
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Package manager caches
+.npm/
+.pnpm-store/
+
+
+# ==================================================
+# 4. EXPO / REACT NATIVE
+# ==================================================
+
+.expo/
+**/.expo/
+
+.expo-shared/
+web-build/
+
+# Expo generated declarations may be tracked if required
+# expo-env.d.ts
+
+
+# ==================================================
+# 5. JAVASCRIPT / TYPESCRIPT BUILD OUTPUT
+# ==================================================
+
+dist/
+**/dist/
+
+build/
+**/build/
+
+coverage/
+**/coverage/
+
+*.tsbuildinfo
+
+
+# ==================================================
+# 6. PYTHON / FASTAPI
+# ==================================================
+
+venv/
+.venv/
+env/
+ENV/
+**/venv/
+**/.venv/
+
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Python packaging
+*.egg-info/
+.eggs/
+wheels/
+pip-wheel-metadata/
+
+
+# ==================================================
+# 7. MACHINE LEARNING MODEL ARTIFACTS
+# ==================================================
+
+# Keep these tracked if they are required to run the demo.
+# Uncomment only if the model files are generated locally
+# and should not be uploaded to GitHub.
+#
+# *.joblib
+# *.pkl
+# *.pickle
+
+
+# ==================================================
+# 8. PRISMA
+# ==================================================
+
+# Do not ignore:
+# backend/prisma/schema.prisma
+# backend/prisma/migrations/
+# backend/prisma/seed.ts
+
+# Generated Prisma client is normally under node_modules.
+# Do not ignore the entire prisma directory.
+
+
+# ==================================================
+# 9. DATABASES AND LOCAL BACKUPS
+# ==================================================
+
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# SQL dumps and database backups
+# Keep migration SQL files in Prisma migrations.
+*.sql.gz
+*.dump
+*.bak.sql
+
+# Do not use *.sql here because Prisma migration files
+# often end in migration.sql and must be committed.
+
+
+# ==================================================
+# 10. LOGS
+# ==================================================
+
+*.log
+logs/
+**/logs/
+
+
+# ==================================================
+# 11. IDE AND OPERATING SYSTEM FILES
+# ==================================================
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+
+# ==================================================
+# 12. TEMPORARY FILES
+# ==================================================
+
+tmp/
+temp/
+.cache/
+.parcel-cache/
+
+
+# ==================================================
+# 13. LOCAL CONFIGURATION
+# ==================================================
+
+# Local-only files; review before enabling these rules.
+# .env.local
+# config.local.json

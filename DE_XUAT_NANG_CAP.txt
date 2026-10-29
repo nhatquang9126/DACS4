@@ -1,0 +1,91 @@
+================================================================================
+TỔNG HỢP VÀ TÓM TẮT ĐỀ XUẤT NÂNG CẤP DỰ ÁN SMARTSTUDY AI
+(Trích xuất và tóm lược từ Báo cáo Thẩm định Kiến trúc & Đồ án)
+================================================================================
+
+Các đề xuất nâng cấp được phân loại thành 3 nhóm theo mức độ ưu tiên và giá trị học thuật:
+
+--------------------------------------------------------------------------------
+1. NHÓM A: BẮT BUỘC HOÀN THIỆN (Ưu tiên P0 - Để ứng dụng chạy ổn định và Demo được)
+--------------------------------------------------------------------------------
+Đây là các lỗi kỹ thuật nền tảng, đứt gãy kết nối hoặc thiếu sót cốt lõi cần xử lý ngay:
+
+1.1. Chuẩn hóa Cấu hình Mạng & Biến môi trường:
+  - Thay toàn bộ IP tĩnh/cố định trong `axiosClient.ts` bằng `process.env.EXPO_PUBLIC_API_URL`.
+  - Cung cấp file `.env.example` đầy đủ cho cả Frontend và Backend để đảm bảo triển khai trên máy khác hoặc mạng LAN không bị lỗi.
+
+1.2. Sửa lỗi đứt gãy luồng dữ liệu màn hình Chi tiết Môn học (`courses/[id].tsx`):
+  - Bổ sung `include: { materials: true, quizzes: true }` vào API `getCourseTopics` ở backend.
+  - Xóa bỏ triệt để code fallback gán cứng ID = 1 ở frontend để hiển thị đúng tài liệu/quiz thực tế của từng môn.
+
+1.3. Kết nối phân hệ AI lên màn hình Dashboard:
+  - Tích hợp gọi API `GET /api/ai/dashboard-analysis` vào màn hình chính `index.tsx`.
+  - Hiển thị trực quan khối "Đánh giá nguy cơ học tập từ AI" kèm badge phân loại (Cao/Trung bình/Thấp) và các khuyến nghị hành động tương ứng.
+
+1.4. Bổ sung API `GET /api/auth/me` và hoàn thiện `AuthContext`:
+  - Trả về thông tin người dùng từ token JWT hợp lệ để xác thực session.
+  - Xóa bỏ dữ liệu giả lập (mock `student@example.com`) khi mở app, kiểm tra token thật.
+
+1.5. Sửa lỗi TypeScript và đóng gói Frontend:
+  - Chuẩn hóa các import thừa từ template cũ (như `modal.tsx`, `Colors`, `Themed.tsx`) để lệnh `tsc` và `expo lint` vượt qua 100%.
+
+1.6. Vá các lỗ hổng phân quyền dữ liệu (IDOR):
+  - Bổ sung kiểm tra quyền sở hữu (`userId`) đối với các API cập nhật trạng thái lộ trình (`updatePlanItemStatus`) và gửi tin nhắn gia sư (`chatWithTutor`).
+
+--------------------------------------------------------------------------------
+2. NHÓM B: NÂNG CẤP TĂNG CHẤT LƯỢNG (Ưu tiên P1 - Tăng chiều sâu cá nhân hóa & Học thuật)
+--------------------------------------------------------------------------------
+Các hạng mục giúp đồ án thuyết phục tuyệt đối trước hội đồng chấm thi:
+
+2.1. Nâng cấp tính Khoa học cho Mô hình Machine Learning (AI Service):
+  - Thay thế dữ liệu tự sinh (Synthetic data) bằng bộ dữ liệu thực tế chuẩn quốc tế (như OULAD - Open University Learning Analytics Dataset hoặc UCI Student Performance).
+  - Huấn luyện lại Random Forest / Gradient Boosting, trích xuất ma trận nhầm lẫn (Confusion Matrix) và độ quan trọng của đặc trưng (Feature Importance) đưa vào báo cáo và slide thuyết minh.
+
+2.2. Cơ chế Dự phòng Thông minh (Heuristic Fallback) cho AI Service:
+  - Khi AI Service bị lỗi mạng hoặc tắt, Backend tự động chuyển sang cơ chế suy luận mờ theo tập luật (Rule-based heuristics) tại Node.js thay vì báo lỗi 500 ra ứng dụng.
+
+2.3. Bổ sung Ngữ cảnh Hội thoại (Conversational Memory) cho Gia sư AI:
+  - Khi gửi câu hỏi tới AI, truyền thêm 6-10 tin nhắn gần nhất từ `TutorMessage` kèm thông tin các môn học sinh viên đang theo học để câu trả lời bám sát thực tế của người dùng.
+
+2.4. Xây dựng Giao diện Quản lý Nhiệm vụ (Tasks UI) và Điểm số (Grades UI):
+  - Tận dụng 100% các API và bảng CSDL đã viết sẵn ở Backend để hoàn thiện giao diện To-do list và theo dõi điểm thành phần môn học trên Mobile.
+
+2.5. Trực quan hóa tiến độ bằng Biểu đồ học tập:
+  - Hiển thị thời gian học tập 7 ngày gần nhất dưới dạng biểu đồ cột/đường trực quan thay vì chỉ hiện con số tĩnh.
+
+--------------------------------------------------------------------------------
+3. NHÓM C: TÍNH NĂNG MỚI ĐÁNG CÂN NHẮC (Ưu tiên P2 - Đánh giá tính khả thi)
+--------------------------------------------------------------------------------
+Các tính năng mở rộng có giá trị thực tiễn cao:
+
+3.1. Ôn tập ngắt quãng (Spaced Repetition & Flashcards):
+  - Giá trị: Rất cao đối với việc học lập trình và ghi nhớ kiến thức lý thuyết.
+  - Triển khai: Áp dụng thuật toán SM-2 đơn giản tại Backend, thêm màn hình lật Flashcard ôn tập hàng ngày.
+  - Khuyến nghị: RẤT NÊN LÀM nếu còn thời gian (tạo điểm nhấn cá nhân hóa nổi bật).
+
+3.2. Sinh câu hỏi trắc nghiệm tự động từ bài giảng (AI Quiz Generation):
+  - Giá trị: Sinh viên tự ôn tập theo tài liệu môn học.
+  - Triển khai: Đã có sẵn hàm `generateQuestions` trong `tutor.controller.ts`, chỉ cần dựng giao diện nút bấm "Tạo quiz ôn tập từ bài này" trên app.
+  - Khuyến nghị: NÊN HOÀN THIỆN GIAO DIỆN.
+
+3.3. Gia sư AI hiểu bài giảng (RAG / Context-based Tutor):
+  - Giá trị: AI không trả lời chung chung mà trích dẫn đúng slide/tài liệu trong bảng `Material`.
+  - Triển khai: Tìm kiếm theo từ khóa hoặc vector embeddings nội dung tài liệu trước khi gọi LLM.
+  - Khuyến nghị: CÂN NHẮC triển khai mức độ cơ bản (truy vấn text tài liệu liên quan vào prompt).
+
+3.4. Thông báo đẩy nhắc học (Push Notifications):
+  - Khuyến nghị: ĐỂ GIAI ĐOẠN SAU (tốn thời gian cấu hình background service và quyền hệ điều hành trên Expo Go).
+
+3.5. Đồng bộ Pomodoro khi tắt màn hình:
+  - Khuyến nghị: KHÔNG NÊN LÀM PHỨC TẠP. Giải pháp tối ưu: Chỉ cần lưu mốc thời gian bắt đầu (startTime) và kết thúc (endTime) xuống CSDL thay vì chạy tiến trình ngầm liên tục khi khóa màn hình.
+
+================================================================================
+4. LỘ TRÌNH TRIỂN KHAI ĐỀ XUẤT (ROADMAP)
+================================================================================
+- Giai đoạn 1 (1 - 2 ngày): Sửa lỗi mạng, cấu hình env, vá IDOR, hoàn thiện API auth/me và sửa màn hình Chi tiết môn học.
+- Giai đoạn 2 (2 - 3 ngày): Nâng cấp Dashboard (hiển thị thẻ AI Risk), bổ sung ngữ cảnh chat cho Gia sư AI, xây dựng UI Nhiệm vụ/Điểm số.
+- Giai đoạn 3 (2 - 3 ngày): Huấn luyện lại mô hình ML với dataset chuẩn, xuất biểu đồ trực quan hóa số liệu học tập.
+- Giai đoạn 4 (Nếu còn thời gian): Tích hợp tính năng Flashcard Spaced Repetition và Sinh Quiz tự động.
+- Giai đoạn 5 (1 ngày): Kiểm thử toàn diện kịch bản bảo vệ, chuẩn bị dữ liệu demo mượt mà trước hội đồng.
+================================================================================
+

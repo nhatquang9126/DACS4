@@ -1,0 +1,102 @@
+
+# ==================================================
+# SmartStudy AI - Root Git Ignore
+# ==================================================
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Editor history - may contain old API keys
+.history/
+**/.history/
+
+# Nested Git backups
+.git_backup*/
+**/.git_backup*/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+**/__pycache__/
+__pycache__/
+*.py[cod]
+
+# Python test and tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Expo / React Native
+.expo/
+**/.expo/
+.expo-shared/
+web-build/
+
+# Build output
+dist/
+**/dist/
+build/
+**/build/
+coverage/
+**/coverage/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating system
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+.cache/
+.parcel-cache/
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.sql.gz
+*.dump
+
+# Keep Prisma schema, seed and migrations.
+# Do NOT ignore *.sql globally.
+
+# ML models:
+# Keep required demo models unless you intentionally
+# decide to exclude large generated artifacts.
+# *.joblib
+# *.pkl
+# *.pickle

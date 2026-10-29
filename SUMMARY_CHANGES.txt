@@ -1,0 +1,60 @@
+# TỔNG HỢP VÀ TÓM TẮT CÁC THAY ĐỔI TRONG WORKSPACE (CHANGELOG SUMMARY)
+Dự án: SmartStudy AI
+Thời điểm rà soát: 28/10/2026
+
+================================================================================
+I. TỔNG QUAN TÌNH TRẠNG CAN THIỆP MÃ NGUỒN CỦA AGENT TRONG PHIÊN LÀM VIỆC NÀY
+================================================================================
+Theo yêu cầu bắt buộc tại Nguyên tắc kiểm tra (Phần 1):
+"QUAN TRỌNG: Chỉ phân tích và lập báo cáo trong giai đoạn này. Không tự ý sửa code, tạo file, cài thư viện, chạy migration, thay đổi cơ sở dữ liệu hoặc triển khai tính năng mới."
+
+=> TRONG PHIÊN LÀM VIỆC HIỆN TẠI (AUDIT & ĐÁNH GIÁ):
+- Agent TUÂN THỦ TUYỆT ĐỐI nguyên tắc không can thiệp code.
+- Agent KHÔNG thực hiện bất kỳ lệnh sửa code, cài đặt package, thay đổi schema hay migration nào.
+- Toàn bộ source code, database và cấu hình được GIỮ NGUYÊN 100%.
+
+================================================================================
+II. TÓM TẮT CÁC THAY ĐỔI ĐÃ CÓ TRONG LỊCH SỬ WORKSPACE (GIT STATUS HIỆN TẠI)
+================================================================================
+Dưới đây là thống kê các file đang được thay đổi cục bộ (working tree changes) trên branch `feature/upgrade` từ trước hoặc từ các phiên chỉnh sửa trước đó của workspace:
+
+1. BACKEND (Node.js / Express / Prisma):
+   - `backend/prisma/seed.ts`: Bổ sung dữ liệu seed mẫu (tài khoản admin, môn học, dữ liệu mẫu).
+   - `backend/src/controllers/ai.controller.ts`: Nâng cấp trích xuất đặc trưng từ DB (tính toán giờ học thực tế, tỉ lệ hoàn thành nhiệm vụ, điểm quiz trung bình) gửi sang AI Service và cơ chế fallback dự đoán khi AI Service offline.
+   - `backend/src/controllers/auth.controller.ts`: Hoàn thiện validation bằng Zod, mã hóa mật khẩu bcrypt, hàm getMe/profile.
+   - `backend/src/controllers/content.controller.ts`: Tối ưu hóa truy vấn danh sách chủ đề và tài liệu bài học theo Course ID / Topic ID.
+   - `backend/src/controllers/learning.controller.ts`: Bổ sung logic gợi ý lộ trình cá nhân hóa dựa trên phân tích năng lực quiz (skill_breakdown).
+   - `backend/src/controllers/tutor.controller.ts`: Tích hợp hỏi đáp gia sư AI với ngữ cảnh môn học của người dùng và lưu trữ lịch sử phiên trò chuyện (TutorSession/TutorMessage).
+   - `backend/src/index.ts`: Bổ sung cấu hình route admin `/api/admin` và kiểm tra kết nối CSDL tại `/health`.
+   - `backend/src/middlewares/auth.middleware.ts`: Hoàn thiện middleware xác thực JWT và phân quyền `authorize(['ADMIN'])`.
+   - `backend/src/routes/auth.routes.ts`: Bổ sung route `/me` phục vụ lấy thông tin người dùng đang đăng nhập.
+   - Files mới tạo thêm (untracked):
+     + `backend/src/controllers/admin.controller.ts`: Controller phục vụ bảng điều khiển quản trị viên và giám sát sinh viên nguy cơ.
+     + `backend/src/routes/admin.routes.ts`: Định tuyến phân quyền admin.
+     + `backend/.env.example`: File mẫu biến môi trường chuẩn hóa cho backend.
+
+2. FRONTEND (React Native / Expo Router):
+   - Cấu trúc thư mục `frontend/app/` đã được bổ sung đầy đủ các màn hình:
+     + `app/(auth)/login.tsx`, `register.tsx`: Đăng nhập/đăng ký.
+     + `app/(tabs)/index.tsx`: Dashboard hiển thị thẻ cảnh báo nguy cơ AI, biểu đồ thời gian học, tiến độ nhiệm vụ.
+     + `app/(tabs)/courses.tsx`: Danh sách môn học và đăng ký môn.
+     + `app/(tabs)/plan.tsx`: Lộ trình học tập cá nhân hóa, tích hợp tích hoàn thành nhiệm vụ và điều chỉnh.
+     + `app/(tabs)/tutor.tsx`: Giao diện chat với gia sư AI hỗ trợ định dạng markdown.
+     + `app/(tabs)/profile.tsx`: Hồ sơ cá nhân tích hợp đồng hồ bấm giờ học tập (Pomodoro/Session).
+     + `app/courses/[id].tsx`: Chi tiết môn học, danh sách chủ đề, tài liệu và quiz.
+     + `app/materials/[id].tsx`: Màn hình xem chi tiết bài học và tài liệu lý thuyết.
+     + `app/quiz/[id].tsx` & `app/quiz/result/[id].tsx`: Làm bài kiểm tra trắc nghiệm có đồng hồ đếm ngược và xem phân tích năng lực theo từng skill_tag.
+     + `app/admin/index.tsx`: Màn hình quản trị cho giảng viên/admin theo dõi cảnh báo nguy cơ học tập của sinh viên.
+   - Hệ thống client & context:
+     + `frontend/src/api/axiosClient.ts`: Tự động gắn JWT token từ SecureStore/localStorage, tự động dọn session khi gặp lỗi 401.
+     + `frontend/src/context/AuthContext.tsx`: Quản lý trạng thái đăng nhập xuyên suốt ứng dụng.
+     + `frontend/src/types/`: Khai báo chặt chẽ interface dữ liệu giữa frontend và backend.
+
+3. AI SERVICE (FastAPI / Machine Learning):
+   - File `ai-service/train_model.py`: Pipeline huấn luyện mô hình phân loại nguy cơ học tập (RandomForest / GradientBoosting).
+   - File `ai-service/models/risk_model_v1.0.0.joblib`: File mô hình ML đã được huấn luyện sẵn (~317 KB).
+   - File `ai-service/main.py`: Cung cấp API `/predict-risk`, `/recommendations` và `/health`.
+
+4. TÀI LIỆU BÁO CÁO TOÀN DIỆN:
+   - File `PROJECT_AUDIT_REPORT.md`: Báo cáo thẩm định kiến trúc, kiểm kê 15 nhóm chức năng, đánh giá mức độ cá nhân hóa AI, kiểm thử và lộ trình phát triển đã được xuất ra tại thư mục gốc.
+

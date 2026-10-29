@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  password_hash String
+  role          String         @default("STUDENT")
+  created_at    DateTime       @default(now())
+  enrollments   Enrollment[]
+  tasks         Task[]
+  studySessions StudySession[] 
+  predictions   Prediction[]
+  quizAttempts  QuizAttempt[]
+  studyPlans    StudyPlan[]
+  tutorSessions TutorSession[]
+}
+
+model Course {
+  id          Int          @id @default(autoincrement())
+  code        String       @unique
+  name        String
+  credits     Int
+  enrollments Enrollment[]
+  topics      Topic[]
+}
+
+model Enrollment {
+  id              Int              @id @default(autoincrement())
+  user_id         Int
+  course_id       Int
+  semester        String
+  status          String           @default("ACTIVE")
+  user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  course          Course           @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  gradeComponents GradeComponent[]
+  tasks           Task[]
+  studySessions   StudySession[]
+
+  @@unique([user_id, course_id, semester])
+}
+
+model GradeComponent {
+  id            Int        @id @default(autoincrement())
+  enrollment_id Int
+  name          String
+  weight        Float
+  score         Float?
+  enrollment    Enrollment @relation(fields: [enrollment_id], references: [id])
+}
+
+model Task {
+  id            Int        @id @default(autoincrement())
+  user_id       Int
+  enrollment_id Int
+  title         String
+  description   String?    @db.Text
+  due_date      DateTime
+  status        String     @default("TODO")
+  created_at    DateTime   @default(now())
+  completed_at  DateTime?
+  user          User       @relation(fields: [user_id], references: [id])
+  enrollment    Enrollment @relation(fields: [enrollment_id], references: [id])
+}
+
+model StudySession {
+  id               Int         @id @default(autoincrement())
+  user_id          Int
+  enrollment_id    Int?        // Có thể gắn với một môn học cụ thể hoặc để null (học tự do)
+  start_time       DateTime    @default(now())
+  end_time         DateTime?
+  duration_minutes Int?        // Thời lượng tính bằng phút
+  status           String      @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, CANCELLED
+  notes            String?     @db.Text
+  created_at       DateTime    @default(now())
+  user             User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  enrollment       Enrollment? @relation(fields: [enrollment_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([enrollment_id])
+}
+
+model Prediction {
+  id              Int              @id @default(autoincrement())
+  user_id         Int
+  risk_level      String
+  model_version   String
+  features_used   String?          @db.Text // Lưu lại snapshot data lúc dự đoán (JSON)
+  created_at      DateTime         @default(now())
+  user            User             @relation(fields: [user_id], references: [id])
+  recommendations Recommendation[]
+}
+
+model Recommendation {
+  id            Int        @id @default(autoincrement())
+  prediction_id Int
+  action_text   String
+  reason        String     @db.Text
+  priority      Int
+  status        String     @default("PENDING") // PENDING, COMPLETED
+  prediction    Prediction @relation(fields: [prediction_id], references: [id])
+}
+
+model Topic {
+  id          Int        @id @default(autoincrement())
+  course_id   Int
+  title       String
+  description String?    @db.Text
+  order_index Int        @default(0)
+  created_at  DateTime   @default(now())
+  course      Course     @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  materials   Material[]
+  quizzes     Quiz[]
+
+  @@index([course_id])
+}
+
+model Material {
+  id           Int      @id @default(autoincrement())
+  topic_id     Int
+  title        String
+  content_type String   @default("MARKDOWN") // TEXT, MARKDOWN, VIDEO_URL
+  content      String   @db.Text
+  order_index  Int      @default(0)
+  created_at   DateTime @default(now())
+  topic        Topic    @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@index([topic_id])
+}
+
+model Quiz {
+  id                 Int           @id @default(autoincrement())
+  topic_id           Int
+  title              String
+  description        String?       @db.Text
+  time_limit_minutes Int           @default(15)
+  created_at         DateTime      @default(now())
+  topic              Topic         @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+  questions          Question[]
+  attempts           QuizAttempt[]
+
+  @@index([topic_id])
+}
+
+model Question {
+  id                   Int          @id @default(autoincrement())
+  quiz_id              Int
+  question_text        String       @db.Text
+  options              String       @db.Text // JSON String mảng các đáp án: ["A", "B", "C", "D"]
+  correct_option_index Int          // Chỉ số đáp án đúng (0, 1, 2, 3)
+  explanation          String?      @db.Text
+  skill_tag            String       // Thẻ kỹ năng, VD: "khai_bao_con_tro", "them_xoa_nut"
+  quiz                 Quiz         @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  quizAnswers          QuizAnswer[]
+
+  @@index([quiz_id])
+}
+
+model QuizAttempt {
+  id                    Int          @id @default(autoincrement())
+  user_id               Int
+  quiz_id               Int
+  score                 Float        // Thang điểm 10.0
+  total_questions       Int
+  correct_answers_count Int
+  skill_breakdown       String       @db.Text // JSON lưu kết quả phân tích theo skill_tag
+  created_at            DateTime     @default(now())
+  user                  User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  quiz                  Quiz         @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  answers               QuizAnswer[]
+
+  @@index([user_id])
+  @@index([quiz_id])
+}
+
+model QuizAnswer {
+  id                    Int         @id @default(autoincrement())
+  attempt_id            Int
+  question_id           Int
+  selected_option_index Int
+  is_correct            Boolean
+  attempt               QuizAttempt @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
+  question              Question    @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@index([attempt_id])
+}
+
+model StudyPlan {
+  id         Int             @id @default(autoincrement())
+  user_id    Int
+  status     String          @default("ACTIVE") // ACTIVE, COMPLETED
+  created_at DateTime        @default(now())
+  user       User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items      StudyPlanItem[]
+
+  @@index([user_id])
+}
+
+model StudyPlanItem {
+  id           Int       @id @default(autoincrement())
+  plan_id      Int
+  title        String
+  description  String?   @db.Text
+  action_type  String    // REVIEW_THEORY, PRACTICE_QUIZ, ADVANCED_TOPIC
+  reference_id Int?      // ID của Material hoặc Quiz tương ứng
+  status       String    @default("PENDING") // PENDING, IN_PROGRESS, DONE
+  priority     Int       @default(2) // 1: HIGH, 2: MEDIUM, 3: LOW
+  created_at   DateTime  @default(now())
+  plan         StudyPlan @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+
+  @@index([plan_id])
+}
+
+model TutorSession {
+  id         Int            @id @default(autoincrement())
+  user_id    Int
+  topic      String?        // Chủ đề cuộc trò chuyện (tự động sinh)
+  created_at DateTime       @default(now())
+  user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages   TutorMessage[]
+
+  @@index([user_id])
+}
+
+model TutorMessage {
+  id         Int          @id @default(autoincrement())
+  session_id Int
+  sender     String       // "USER" hoặc "AI"
+  content    String       @db.Text
+  created_at DateTime     @default(now())
+  session    TutorSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+}
+
