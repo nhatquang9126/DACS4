@@ -160,30 +160,130 @@ try {
 // Thêm vào src/controllers/tutor.controller.ts
 
 export const generateQuestions = async (req: AuthRequest, res: Response): Promise<void> => {
-try {
-    const { topic, count } = req.body;
-    
-    // Ép AI trả về JSON Object có chứa mảng "questions"
-    const prompt = `Hãy tạo ${count || 3} câu hỏi trắc nghiệm về chủ đề "${topic}". 
-Yêu cầu trả về DUY NHẤT một JSON Object có định dạng sau, không có markdown text dư thừa:
-{
-"questions": [
-    {
-    "question_text": "Nội dung câu hỏi?",
-    "options": ["A", "B", "C", "D"],
-    "correct_option_index": 0,
-    "explanation": "Giải thích vì sao A đúng."
+  try {
+    const { topicId, materialId, topic, count } = req.body;
+    const numQuestions = count ? Math.min(Math.max(Number(count), 1), 10) : 4;
+
+    let targetTopicId: number | null = null;
+    let contentContext = '';
+    let contentTitle = '';
+
+    // 1. Lấy dữ liệu từ Material nếu truyền materialId
+    if (materialId) {
+      const matId = Number(materialId);
+      const material = await prisma.material.findUnique({
+        where: { id: matId },
+        include: { topic: true },
+      });
+      if (!material) {
+        res.status(404).json({ message: 'Không tìm thấy tài liệu học tập' });
+        return;
+      }
+      targetTopicId = material.topic_id;
+      contentTitle = material.title;
+      contentContext = `Tài liệu: "${material.title}"\nNội dung:\n${material.content.slice(0, 2500)}`;
     }
-]
+    // 2. Lấy dữ liệu từ Topic nếu truyền topicId
+    else if (topicId) {
+      const topId = Number(topicId);
+      const top = await prisma.topic.findUnique({
+        where: { id: topId },
+        include: { materials: true },
+      });
+      if (!top) {
+        res.status(404).json({ message: 'Không tìm thấy chủ đề học tập' });
+        return;
+      }
+      targetTopicId = top.id;
+      contentTitle = top.title;
+      const combinedMaterials = top.materials.map((m) => m.content).join('\n---\n');
+      contentContext = `Chủ đề: "${top.title}"\n${top.description ? `Mô tả: ${top.description}\n` : ''}Tài liệu tổng hợp:\n${combinedMaterials.slice(0, 2500)}`;
+    } else if (topic && typeof topic === 'string') {
+      contentTitle = topic;
+      contentContext = `Chủ đề: "${topic}"`;
+    } else {
+      res.status(400).json({ message: 'Vui lòng cung cấp materialId, topicId hoặc tên chủ đề' });
+      return;
+    }
+
+    // 3. Prompt gửi cho LLM để sinh bộ câu hỏi trắc nghiệm
+    const prompt = `Bạn là chuyên gia giáo dục biên soạn đề thi. Hãy tạo đúng ${numQuestions} câu hỏi trắc nghiệm chất lượng cao bám sát nội dung sau:
+${contentContext}
+
+Yêu cầu định dạng đầu ra:
+Trả về DUY NHẤT một chuỗi JSON thuần (không kèm định dạng markdown \`\`\`json hay văn bản giải thích phụ):
+{
+  "title": "Quiz ôn tập AI: ${contentTitle.slice(0, 40)}",
+  "questions": [
+    {
+      "question_text": "Nội dung câu hỏi rõ ràng, bám sát bài học?",
+      "options": ["Lựa chọn A", "Lựa chọn B", "Lựa chọn C", "Lựa chọn D"],
+      "correct_option_index": 0,
+      "explanation": "Giải thích chi tiết vì sao đáp án này đúng.",
+      "skill_tag": "khai_niem_co_ban"
+    }
+  ]
 }`;
 
     const jsonString = await askAITutor(prompt);
-    
-    // Parse chuỗi JSON từ AI trả về để gửi xuống Client như một mảng thực thụ
-    const data = JSON.parse(jsonString);
-    
-    res.status(200).json(data);
-} catch (error) {
-    res.status(500).json({ message: 'Lỗi khi sinh câu hỏi', error });
-}
+
+    // Xử lý chuỗi JSON nếu LLM có bọc markdown
+    let cleanJson = jsonString.trim();
+    if (cleanJson.startsWith('```json')) {
+      cleanJson = cleanJson.replace(/^```json/, '').replace(/```$/, '').trim();
+    } else if (cleanJson.startsWith('```')) {
+      cleanJson = cleanJson.replace(/^```/, '').replace(/```$/, '').trim();
+    }
+
+    const data = JSON.parse(cleanJson);
+    const questionsList = Array.isArray(data.questions) ? data.questions : [];
+
+    if (questionsList.length === 0) {
+      throw new Error('AI không sinh được câu hỏi hợp lệ.');
+    }
+
+    // 4. Lưu Quiz vào Database nếu có targetTopicId để sinh viên làm bài ngay
+    if (targetTopicId) {
+      const createdQuiz = await prisma.quiz.create({
+        data: {
+          topic_id: targetTopicId,
+          title: data.title || `Quiz AI: ${contentTitle.slice(0, 40)}`,
+          description: `Đề thi trắc nghiệm được sinh tự động bởi AI từ bài học "${contentTitle}".`,
+          time_limit_minutes: Math.max(5, questionsList.length * 2),
+          questions: {
+            create: questionsList.map((q: any) => ({
+              question_text: q.question_text || 'Câu hỏi',
+              options: JSON.stringify(q.options || ['A', 'B', 'C', 'D']),
+              correct_option_index: Number.isInteger(q.correct_option_index) ? q.correct_option_index : 0,
+              explanation: q.explanation || '',
+              skill_tag: q.skill_tag || 'on_tap_ai',
+            })),
+          },
+        },
+        include: {
+          questions: true,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Đã sinh câu hỏi và tạo bài kiểm tra Quiz thành công!',
+        quiz_id: createdQuiz.id,
+        quiz: createdQuiz,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      questions: questionsList,
+    });
+  } catch (error: any) {
+    console.error('Lỗi khi sinh câu hỏi trắc nghiệm:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể sinh câu hỏi trắc nghiệm lúc này. Vui lòng thử lại.',
+      error: error?.message,
+    });
+  }
 };

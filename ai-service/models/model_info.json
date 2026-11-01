@@ -1,16 +1,25 @@
 {
-  "version": "1.0.0",
-  "algorithm": "RandomForestClassifier",
-  "weighted_f1_score": 0.9916,
+  "version": "2.0.0",
+  "algorithm": "GradientBoostingClassifier",
+  "weighted_f1_score": 0.9667,
   "features": [
     "avg_current_score",
     "study_hours_past_7_days",
     "missed_deadlines_count",
     "task_completion_rate"
   ],
+  "feature_importances": {
+    "avg_current_score": 0.4527,
+    "study_hours_past_7_days": 0.1435,
+    "missed_deadlines_count": 0.3904,
+    "task_completion_rate": 0.0134
+  },
   "classes": [
     "LOW",
     "MEDIUM",
     "HIGH"
-  ]
+  ],
+  "dataset_source": "UCI Student Performance Distribution (N=1500)",
+  "confusion_matrix_path": "models/confusion_matrix.png",
+  "feature_importance_path": "models/feature_importance.png"
 }

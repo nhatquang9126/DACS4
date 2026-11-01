@@ -16,8 +16,18 @@ status: z.enum(['TODO', 'IN_PROGRESS', 'DONE'], { error: 'Trạng thái không h
 
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const userId = req.user!.id;
+    const { semester } = req.query;
+
+    const whereCondition: any = { user_id: userId };
+    if (semester && typeof semester === 'string' && semester.trim() !== '' && semester !== 'ALL') {
+      whereCondition.enrollment = {
+        semester: semester.trim(),
+      };
+    }
+
     const tasks = await prisma.task.findMany({
-      where: { user_id: req.user!.id },
+      where: whereCondition,
       include: {
         enrollment: {
           include: {

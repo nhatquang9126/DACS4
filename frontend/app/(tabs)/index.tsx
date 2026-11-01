@@ -26,6 +26,7 @@ import {
   FileCheck,
   GraduationCap,
   TrendingUp,
+  Layers,
 } from 'lucide-react-native';
 import { COLORS, SIZES, SHADOWS, TYPOGRAPHY } from '../../src/constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
@@ -455,6 +456,24 @@ export default function DashboardScreen() {
           </View>
         </View>
         <ArrowRight size={18} color={COLORS.primary} />
+      </TouchableOpacity>
+
+      {/* BANNER ÔN TẬP NGẮT QUÃNG SM-2 (FLASHCARDS) */}
+      <TouchableOpacity
+        style={[styles.academicBanner, { marginTop: 10, borderColor: '#DDD6FE' }]}
+        activeOpacity={0.8}
+        onPress={() => router.push('/flashcards' as any)}
+      >
+        <View style={styles.academicBannerLeft}>
+          <View style={[styles.academicIconCircle, { backgroundColor: '#F5F3FF' }]}>
+            <Layers size={22} color="#7C3AED" />
+          </View>
+          <View>
+            <Text style={styles.academicBannerTitle}>Ôn tập ngắt quãng (Flashcards SM-2)</Text>
+            <Text style={styles.academicBannerSub}>Ghi nhớ kiến thức dài hạn theo thuật toán SuperMemo</Text>
+          </View>
+        </View>
+        <ArrowRight size={18} color="#7C3AED" />
       </TouchableOpacity>
 
       {/* 5. KHUYẾN NGHỊ & LỘ TRÌNH TỪ QUIZ */}

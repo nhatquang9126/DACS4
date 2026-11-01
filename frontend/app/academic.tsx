@@ -50,6 +50,10 @@ export default function AcademicScreen() {
   // State Grades & Enrollments
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
 
+  // State Bộ lọc Học kỳ nâng cao (Semester Filter)
+  const [selectedSemester, setSelectedSemester] = useState<string>('ALL');
+  const [availableSemesters, setAvailableSemesters] = useState<string[]>(['ALL', 'HK1-2026', 'HK2-2026']);
+
   // State chung
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -64,12 +68,13 @@ export default function AcademicScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  const fetchAcademicData = async () => {
+  const fetchAcademicData = async (semesterFilter: string = selectedSemester) => {
     try {
       setErrorMsg('');
+      const semParam = semesterFilter !== 'ALL' ? `?semester=${encodeURIComponent(semesterFilter)}` : '';
       const [tasksRes, enrollmentsRes] = await Promise.allSettled([
-        axiosClient.get('/tasks'),
-        axiosClient.get('/courses/my-courses'),
+        axiosClient.get(`/tasks${semParam}`),
+        axiosClient.get(`/courses/my-courses${semParam}`),
       ]);
 
       if (tasksRes.status === 'fulfilled') {
@@ -78,6 +83,18 @@ export default function AcademicScreen() {
       if (enrollmentsRes.status === 'fulfilled') {
         const enrolls: Enrollment[] = enrollmentsRes.value.data || [];
         setEnrollments(enrolls);
+
+        if (semesterFilter === 'ALL' && enrolls.length > 0) {
+          const sems = new Set<string>();
+          enrolls.forEach((e) => {
+            if (e.semester) sems.add(e.semester);
+          });
+          const list = Array.from(sems);
+          if (list.length > 0) {
+            setAvailableSemesters(['ALL', ...list]);
+          }
+        }
+
         if (enrolls.length > 0 && !selectedEnrollmentId) {
           setSelectedEnrollmentId(enrolls[0].id);
         }
@@ -92,13 +109,18 @@ export default function AcademicScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchAcademicData();
-    }, [])
+      fetchAcademicData(selectedSemester);
+    }, [selectedSemester])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchAcademicData();
+    fetchAcademicData(selectedSemester);
+  };
+
+  const handleSelectSemester = (sem: string) => {
+    setSelectedSemester(sem);
+    fetchAcademicData(sem);
   };
 
   // Toggle trạng thái Task bằng Checkbox hình tròn
@@ -264,6 +286,33 @@ export default function AcademicScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* BỘ LỌC HỌC KỲ NÂNG CAO (SEMESTER FILTER BAR) */}
+      <View style={styles.semesterBarWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.semesterScrollContent}
+        >
+          {availableSemesters.map((sem) => {
+            const isSelected = selectedSemester === sem;
+            const label = sem === 'ALL' ? 'Tất cả học kỳ' : sem;
+            return (
+              <TouchableOpacity
+                key={sem}
+                style={[styles.semesterChip, isSelected && styles.semesterChipActive]}
+                onPress={() => handleSelectSemester(sem)}
+                activeOpacity={0.7}
+              >
+                <Calendar size={13} color={isSelected ? '#FFFFFF' : COLORS.textSecondary} />
+                <Text style={[styles.semesterChipText, isSelected && styles.semesterChipTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <ScrollView
@@ -705,6 +754,40 @@ const styles = StyleSheet.create({
     paddingVertical: SIZES.m,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  semesterBarWrapper: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingVertical: 8,
+  },
+  semesterScrollContent: {
+    paddingHorizontal: SIZES.l,
+    gap: 8,
+  },
+  semesterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  semesterChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  semesterChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  semesterChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   segmentedContainer: {
     flexDirection: 'row',

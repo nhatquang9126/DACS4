@@ -14,6 +14,7 @@ import learningRoutes from './routes/learning.routes';
 import tutorRoutes from './routes/tutor.routes';
 import sessionRoutes from './routes/session.routes';
 import adminRoutes from './routes/admin.routes';
+import flashcardRoutes from './routes/flashcard.routes';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api', quizRoutes);
 app.use('/api', learningRoutes);
 app.use('/api', tutorRoutes);
 app.use('/api', sessionRoutes);
+app.use('/api/flashcards', flashcardRoutes);
 
 app.get('/health', async (req: Request, res: Response) => {
 try {

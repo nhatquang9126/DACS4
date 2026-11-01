@@ -20,6 +20,7 @@ model User {
   quizAttempts  QuizAttempt[]
   studyPlans    StudyPlan[]
   tutorSessions TutorSession[]
+  flashcards    Flashcard[]
 }
 
 model Course {
@@ -29,6 +30,7 @@ model Course {
   credits     Int
   enrollments Enrollment[]
   topics      Topic[]
+  flashcards  Flashcard[]
 }
 
 model Enrollment {
@@ -238,4 +240,25 @@ model TutorMessage {
 
   @@index([session_id])
 }
+
+model Flashcard {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  course_id   Int?
+  front       String   @db.Text
+  back        String   @db.Text
+  repetition  Int      @default(0)
+  interval    Int      @default(1)    // Khoảng cách ôn tập tính theo ngày
+  ease_factor Float    @default(2.5)  // Hệ số dễ (tối thiểu 1.3)
+  next_review DateTime @default(now()) // Mốc thời gian đến hạn ôn tập
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  course      Course?  @relation(fields: [course_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([next_review])
+}
+
 

@@ -6,30 +6,32 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, BookOpen, FileText, HelpCircle, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, FileText, HelpCircle, ChevronRight, Sparkles } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SIZES, TYPOGRAPHY } from '../../src/constants/theme';
+import { COLORS, SIZES, SHADOWS, TYPOGRAPHY } from '../../src/constants/theme';
 import axiosClient from '../../src/api/axiosClient';
 import { Topic } from '../../src/types';
 
 export default function CourseDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-const router = useRouter();
+  const router = useRouter();
 
-const courseId = Number(id);
+  const courseId = Number(id);
 
-const isValidCourseId =
-typeof id === 'string' &&
-id.trim() !== '' &&
-Number.isSafeInteger(courseId) &&
-courseId > 0;
+  const isValidCourseId =
+    typeof id === 'string' &&
+    id.trim() !== '' &&
+    Number.isSafeInteger(courseId) &&
+    courseId > 0;
 
-const [topics, setTopics] = useState<Topic[]>([]);
-const [loading, setLoading] = useState(true);
-const [errorMsg, setErrorMsg] = useState('');
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [generatingTopicId, setGeneratingTopicId] = useState<number | null>(null);
 
 useEffect(() => {
 let active = true;
@@ -71,6 +73,40 @@ return () => {
     active = false;
 };
 }, [id]);
+
+  const handleGenerateAiQuiz = async (topicId: number, topicTitle: string) => {
+    try {
+      setGeneratingTopicId(topicId);
+      const response = await axiosClient.post('/tutor/generate-questions', {
+        topicId,
+        count: 4,
+      });
+
+      if (response.data?.quiz_id) {
+        Alert.alert(
+          'Đã tạo Quiz thành công! ✨',
+          `AI vừa biên soạn xong bộ đề trắc nghiệm cho chủ đề "${topicTitle}". Bắt đầu làm bài ngay nhé!`,
+          [
+            { text: 'Để sau', style: 'cancel' },
+            {
+              text: 'Làm bài ngay',
+              onPress: () => router.push(`/quiz/${response.data.quiz_id}` as any),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Thành công', 'Đã sinh câu hỏi ôn tập thành công!');
+      }
+    } catch (err: any) {
+      console.error('Lỗi sinh Quiz AI:', err);
+      Alert.alert(
+        'Không thể tạo Quiz',
+        err?.response?.data?.message || 'Gia sư AI hiện đang bận, vui lòng thử lại sau.'
+      );
+    } finally {
+      setGeneratingTopicId(null);
+    }
+  };
 
 if (loading) {
     return (
@@ -166,6 +202,29 @@ if (loading) {
                 </View>
             )}
             </View>
+
+            {/* Nút Tạo Quiz ôn tập AI từ bài này */}
+            <TouchableOpacity
+              style={[
+                styles.aiQuizBtn,
+                generatingTopicId === topic.id && styles.aiQuizBtnLoading,
+              ]}
+              onPress={() => handleGenerateAiQuiz(topic.id, topic.title)}
+              disabled={generatingTopicId === topic.id}
+              activeOpacity={0.8}
+            >
+              {generatingTopicId === topic.id ? (
+                <View style={styles.aiQuizRow}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.aiQuizBtnText}>AI đang biên soạn đề thi trắc nghiệm...</Text>
+                </View>
+              ) : (
+                <View style={styles.aiQuizRow}>
+                  <Sparkles size={16} color="#FFFFFF" />
+                  <Text style={styles.aiQuizBtnText}>✨ Tạo Quiz ôn tập AI từ bài này</Text>
+                </View>
+              )}
+            </TouchableOpacity>
         </View>
         ))}
 
@@ -236,4 +295,29 @@ startQuizBadge: { backgroundColor: COLORS.secondary, paddingHorizontal: 10, padd
 startQuizText: { color: COLORS.surface, fontSize: 12, fontWeight: 'bold' },
 emptyContainer: { alignItems: 'center', marginTop: SIZES.xl, padding: SIZES.xl },
 emptyText: { marginTop: SIZES.m, color: COLORS.textSecondary, fontSize: 14 },
+aiQuizBtn: {
+  marginTop: SIZES.m,
+  backgroundColor: COLORS.primary,
+  borderRadius: SIZES.radiusBtn,
+  paddingVertical: 10,
+  paddingHorizontal: SIZES.m,
+  alignItems: 'center',
+  justifyContent: 'center',
+  ...SHADOWS.soft,
+},
+aiQuizBtnLoading: {
+  backgroundColor: '#6366F1',
+  opacity: 0.85,
+},
+aiQuizRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+},
+aiQuizBtnText: {
+  color: '#FFFFFF',
+  fontWeight: '700',
+  fontSize: 13,
+},
 });

@@ -73,8 +73,8 @@ try {
     const { semester } = req.query;
 
     const whereCondition: any = { user_id: userId };
-    if (semester && typeof semester === 'string' && semester.trim() !== '') {
-    whereCondition.semester = semester.trim();
+    if (semester && typeof semester === 'string' && semester.trim() !== '' && semester !== 'ALL') {
+      whereCondition.semester = semester.trim();
     }
 
     const enrollments = await prisma.enrollment.findMany({

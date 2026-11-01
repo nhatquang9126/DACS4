@@ -206,3 +206,23 @@ enrollment?: {
     };
 };
 }
+
+export interface Flashcard {
+  id: number;
+  user_id: number;
+  course_id?: number | null;
+  front: string;
+  back: string;
+  repetition: number;
+  interval: number;
+  ease_factor: number;
+  next_review: string;
+  created_at: string;
+  updated_at: string;
+  course?: {
+    id: number;
+    code: string;
+    name: string;
+  } | null;
+}
+
