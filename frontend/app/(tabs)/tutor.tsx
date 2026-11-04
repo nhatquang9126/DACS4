@@ -18,11 +18,17 @@ import {
   Sparkles,
   Plus,
   Compass,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  Check,
 } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
 import { COLORS, SHADOWS, SIZES, TYPOGRAPHY } from '../../src/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axiosClient from '../../src/api/axiosClient';
 import { TutorMessage } from '../../src/types';
+import MarkdownRenderer from '../../src/components/MarkdownRenderer';
 
 type TutorSession = {
   id: number;
@@ -256,6 +262,31 @@ export default function TutorScreen() {
     }
   };
 
+  const [feedbackState, setFeedbackState] = useState<Record<number, 'HELPFUL' | 'UNHELPFUL'>>({});
+  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
+
+  const handleCopyMessage = async (msgId: number, content: string) => {
+    try {
+      await Clipboard.setStringAsync(content);
+      setCopiedMessageId(msgId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (e) {
+      console.error('Lỗi sao chép phản hồi:', e);
+    }
+  };
+
+  const handleFeedback = (msgId: number, type: 'HELPFUL' | 'UNHELPFUL') => {
+    setFeedbackState((prev) => {
+      const current = prev[msgId];
+      if (current === type) {
+        const updated = { ...prev };
+        delete updated[msgId];
+        return updated;
+      }
+      return { ...prev, [msgId]: type };
+    });
+  };
+
   const handleSendMessage = () => {
     sendMessageContent(inputText);
   };
@@ -274,14 +305,90 @@ export default function TutorScreen() {
       );
     }
 
-    // AI bubble: Left aligned, soft gray background, dark text, tail effect at bottom left, bot avatar
+    const currentFeedback = feedbackState[item.id];
+    const isCopied = copiedMessageId === item.id;
+
+    // AI bubble: Left aligned, soft background, rich Markdown formatting, action bar
     return (
       <View style={styles.aiBubbleContainer}>
         <View style={styles.aiAvatarSmall}>
           <Bot size={16} color={COLORS.primary} />
         </View>
-        <View style={styles.bubbleAI}>
-          <Text style={styles.msgTextAI}>{item.content}</Text>
+        <View style={styles.bubbleAIWrapper}>
+          <View style={styles.bubbleAI}>
+            <MarkdownRenderer content={item.content} />
+          </View>
+
+          {/* Action bar dưới mỗi câu trả lời của AI */}
+          <View style={styles.aiActionBar}>
+            <TouchableOpacity
+              style={[styles.actionBtn, isCopied && styles.actionBtnActive]}
+              onPress={() => handleCopyMessage(item.id, item.content)}
+              activeOpacity={0.7}
+            >
+              {isCopied ? (
+                <>
+                  <Check size={12} color="#059669" />
+                  <Text style={[styles.actionBtnText, { color: '#059669', fontWeight: '600' }]}>
+                    Đã sao chép
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Copy size={12} color="#64748B" />
+                  <Text style={styles.actionBtnText}>Sao chép</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.feedbackDivider} />
+
+            <View style={styles.feedbackRow}>
+              <TouchableOpacity
+                style={[
+                  styles.feedbackBtn,
+                  currentFeedback === 'HELPFUL' && styles.feedbackBtnHelpfulActive,
+                ]}
+                onPress={() => handleFeedback(item.id, 'HELPFUL')}
+                activeOpacity={0.7}
+              >
+                <ThumbsUp
+                  size={12}
+                  color={currentFeedback === 'HELPFUL' ? '#059669' : '#64748B'}
+                />
+                <Text
+                  style={[
+                    styles.actionBtnText,
+                    currentFeedback === 'HELPFUL' && styles.feedbackTextHelpfulActive,
+                  ]}
+                >
+                  Hữu ích
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.feedbackBtn,
+                  currentFeedback === 'UNHELPFUL' && styles.feedbackBtnUnhelpfulActive,
+                ]}
+                onPress={() => handleFeedback(item.id, 'UNHELPFUL')}
+                activeOpacity={0.7}
+              >
+                <ThumbsDown
+                  size={12}
+                  color={currentFeedback === 'UNHELPFUL' ? '#DC2626' : '#64748B'}
+                />
+                <Text
+                  style={[
+                    styles.actionBtnText,
+                    currentFeedback === 'UNHELPFUL' && styles.feedbackTextUnhelpfulActive,
+                  ]}
+                >
+                  Chưa rõ
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </View>
     );
@@ -567,10 +674,10 @@ const styles = StyleSheet.create({
   },
   aiBubbleContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     alignSelf: 'flex-start',
-    maxWidth: '85%',
-    marginBottom: 12,
+    maxWidth: '90%',
+    marginBottom: 16,
     gap: 8,
   },
   aiAvatarSmall: {
@@ -580,17 +687,83 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 2,
+    marginTop: 4,
     borderWidth: 1,
     borderColor: '#E0E7FF',
   },
+  bubbleAIWrapper: {
+    flex: 1,
+  },
   bubbleAI: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: 18,
+    paddingVertical: 12,
+    borderRadius: 16,
     borderBottomLeftRadius: 4,
-    flexShrink: 1,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.soft,
+  },
+  aiActionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingHorizontal: 2,
+    gap: 8,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  actionBtnActive: {
+    backgroundColor: '#ECFDF5',
+  },
+  actionBtnText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  feedbackDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#CBD5E1',
+  },
+  feedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  feedbackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  feedbackBtnHelpfulActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
+  },
+  feedbackTextHelpfulActive: {
+    color: '#059669',
+    fontWeight: '700',
+  },
+  feedbackBtnUnhelpfulActive: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+  },
+  feedbackTextUnhelpfulActive: {
+    color: '#DC2626',
+    fontWeight: '700',
   },
   msgTextAI: {
     color: '#1F2937',

@@ -69,6 +69,7 @@ export default function AdminScreen() {
   const [courseCode, setCourseCode] = useState('');
   const [courseName, setCourseName] = useState('');
   const [courseCredits, setCourseCredits] = useState('3');
+  const [courseDifficulty, setCourseDifficulty] = useState<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'>('BEGINNER');
   const [savingCourse, setSavingCourse] = useState(false);
 
   // Modal State cho Soạn Câu hỏi trắc nghiệm
@@ -83,6 +84,16 @@ export default function AdminScreen() {
   const [explanation, setExplanation] = useState('');
   const [skillTag, setSkillTag] = useState('');
   const [savingQuestion, setSavingQuestion] = useState(false);
+
+  // Modal State cho Soạn Tài liệu học tập (Material)
+  const [materialModalVisible, setMaterialModalVisible] = useState(false);
+  const [matTopicId, setMatTopicId] = useState('1');
+  const [matTitle, setMatTitle] = useState('');
+  const [matType, setMatType] = useState<'READING' | 'VIDEO' | 'DOCUMENT_URL' | 'CODE_SNIPPET'>('READING');
+  const [matContent, setMatContent] = useState('');
+  const [matReadingTime, setMatReadingTime] = useState('5');
+  const [matFileUrl, setMatFileUrl] = useState('');
+  const [savingMaterial, setSavingMaterial] = useState(false);
 
   const fetchAdminData = useCallback(async () => {
     try {
@@ -132,6 +143,7 @@ export default function AdminScreen() {
         code: courseCode.trim().toUpperCase(),
         name: courseName.trim(),
         credits: creditsNum,
+        difficulty: courseDifficulty,
       });
 
       Alert.alert('Thành công', `Đã tạo môn học [${courseCode.toUpperCase()}] thành công!`);
@@ -190,6 +202,41 @@ export default function AdminScreen() {
       Alert.alert('Lỗi soạn câu hỏi', error.response?.data?.message || 'Không thể lưu câu hỏi.');
     } finally {
       setSavingQuestion(false);
+    }
+  };
+
+  const handleCreateMaterial = async () => {
+    if (!matTitle.trim() || !matContent.trim()) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ tiêu đề và nội dung bài học.');
+      return;
+    }
+    const topicIdNum = parseInt(matTopicId, 10);
+    if (isNaN(topicIdNum) || topicIdNum <= 0) {
+      Alert.alert('Lỗi', 'ID chủ đề phải là số nguyên dương.');
+      return;
+    }
+
+    try {
+      setSavingMaterial(true);
+      await axiosClient.post('/admin/materials', {
+        topic_id: topicIdNum,
+        title: matTitle.trim(),
+        type: matType,
+        content: matContent.trim(),
+        reading_time: parseInt(matReadingTime, 10) || 5,
+        file_url: matFileUrl.trim() || null,
+      });
+
+      Alert.alert('Thành công', `Đã lưu tài liệu "${matTitle}" vào chủ đề thành công!`);
+      setMaterialModalVisible(false);
+      setMatTitle('');
+      setMatContent('');
+      setMatFileUrl('');
+      fetchAdminData();
+    } catch (error: any) {
+      Alert.alert('Lỗi tạo tài liệu', error.response?.data?.message || 'Không thể tạo tài liệu.');
+    } finally {
+      setSavingMaterial(false);
     }
   };
 
@@ -373,6 +420,17 @@ export default function AdminScreen() {
               </View>
               <Plus size={20} color={COLORS.secondary} />
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => setMaterialModalVisible(true)}>
+              <View style={[styles.actionIconBox, { backgroundColor: '#10B98115' }]}>
+                <FileText size={24} color="#059669" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionCardTitle}>Soạn thảo & Đăng Tài liệu Bài học</Text>
+                <Text style={styles.actionCardDesc}>Biên soạn bài đọc Markdown, Video, Slide PDF kèm thời gian đọc ước tính.</Text>
+              </View>
+              <Plus size={20} color="#059669" />
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -403,11 +461,48 @@ export default function AdminScreen() {
             />
             <TextInput
               style={styles.modalInput}
-              placeholder="Số tín chỉ (VD: 3)"
+              placeholder="Độ khó tương đương tín chỉ (VD: 3)"
               keyboardType="numeric"
               value={courseCredits}
               onChangeText={setCourseCredits}
             />
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.text, marginBottom: 6 }}>
+                Mức độ khó:
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { key: 'BEGINNER', label: 'Cơ bản ⭐' },
+                  { key: 'INTERMEDIATE', label: 'Trung cấp ⭐⭐' },
+                  { key: 'ADVANCED', label: 'Nâng cao ⭐⭐⭐' },
+                ].map((diff) => (
+                  <TouchableOpacity
+                    key={diff.key}
+                    onPress={() => setCourseDifficulty(diff.key as any)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: courseDifficulty === diff.key ? COLORS.primary : COLORS.border,
+                      backgroundColor: courseDifficulty === diff.key ? COLORS.primaryLight : COLORS.surface,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '600',
+                        color: courseDifficulty === diff.key ? COLORS.primary : COLORS.textSecondary,
+                      }}
+                    >
+                      {diff.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
             <TouchableOpacity style={styles.submitModalBtn} onPress={handleCreateCourse} disabled={savingCourse}>
               {savingCourse ? (
@@ -505,6 +600,93 @@ export default function AdminScreen() {
                   <ActivityIndicator color={COLORS.surface} />
                 ) : (
                   <Text style={styles.submitModalBtnText}>Lưu vào Ngân hàng Đề thi</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Modal Soạn thảo & Cập nhật Tài liệu Bài học */}
+      <Modal visible={materialModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalScrollContent}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Soạn thảo Tài liệu Bài học</Text>
+                <TouchableOpacity onPress={() => setMaterialModalVisible(false)}>
+                  <X size={24} color={COLORS.text} />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Topic ID (Mã chủ đề, VD: 1)"
+                keyboardType="numeric"
+                value={matTopicId}
+                onChangeText={setMatTopicId}
+              />
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Tiêu đề tài liệu / bài học (VD: Tổng quan về Cây nhị phân)"
+                value={matTitle}
+                onChangeText={setMatTitle}
+              />
+
+              <Text style={styles.inputLabel}>Loại tài liệu:</Text>
+              <View style={styles.radioRow}>
+                {[
+                  { key: 'READING', label: '📖 Bài đọc' },
+                  { key: 'VIDEO', label: '🎥 Video' },
+                  { key: 'DOCUMENT_URL', label: '📄 Slide' },
+                  { key: 'CODE_SNIPPET', label: '💻 Code' },
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[styles.radioBtn, matType === item.key && styles.radioBtnActive]}
+                    onPress={() => setMatType(item.key as any)}
+                  >
+                    <Text style={[styles.radioText, matType === item.key && styles.radioTextActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Thời gian đọc dự kiến (phút, mặc định: 5)"
+                keyboardType="numeric"
+                value={matReadingTime}
+                onChangeText={setMatReadingTime}
+              />
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Link đính kèm (URL video YouTube, PDF, Slide...) tùy chọn"
+                value={matFileUrl}
+                onChangeText={setMatFileUrl}
+                autoCapitalize="none"
+              />
+
+              <TextInput
+                style={[styles.modalInput, { height: 140, textAlignVertical: 'top' }]}
+                placeholder="Nội dung bài học (Hỗ trợ Markdown: ### Tiêu đề, **in đậm**, ```code```, > quote...)"
+                multiline
+                value={matContent}
+                onChangeText={setMatContent}
+              />
+
+              <TouchableOpacity
+                style={[styles.submitModalBtn, { backgroundColor: '#059669' }]}
+                onPress={handleCreateMaterial}
+                disabled={savingMaterial}
+              >
+                {savingMaterial ? (
+                  <ActivityIndicator color={COLORS.surface} />
+                ) : (
+                  <Text style={styles.submitModalBtnText}>Lưu & Xuất bản Bài học</Text>
                 )}
               </TouchableOpacity>
             </View>

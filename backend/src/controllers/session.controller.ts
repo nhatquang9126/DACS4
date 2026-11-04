@@ -221,3 +221,125 @@ try {
     res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
 }
 };
+
+// 5. GET /api/analytics/weekly-study-time - Tổng hợp thời gian học thực tế 7 ngày gần nhất
+export const getWeeklyStudyTime = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+
+    // 7 ngày gần nhất: lùi từ ngày hiện tại
+    const now = new Date();
+    const dayShortNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const dayFullNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+    // Thời điểm bắt đầu của 6 ngày trước (00:00:00.000)
+    const startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0, 0);
+    // Thời điểm kết thúc của ngày hôm nay (23:59:59.999)
+    const endOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    // Truy vấn tất cả phiên học đã hoàn thành của user trong 7 ngày
+    const completedSessions = await prisma.studySession.findMany({
+      where: {
+        user_id: userId,
+        status: 'COMPLETED',
+        start_time: {
+          gte: startOfPeriod,
+          lte: endOfPeriod,
+        },
+      },
+      select: {
+        start_time: true,
+        end_time: true,
+        duration_minutes: true,
+      },
+    });
+
+    const days = [];
+    let maxMinutes = 0;
+
+    for (let i = 6; i >= 0; i--) {
+      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const dateNum = String(targetDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${dateNum}`;
+      const dayOfWeek = targetDate.getDay();
+
+      // Lọc các phiên học diễn ra trong ngày này (theo ngày tháng năm thực)
+      const daySessions = completedSessions.filter((s) => {
+        const sDate = new Date(s.start_time);
+        const sy = sDate.getFullYear();
+        const sm = String(sDate.getMonth() + 1).padStart(2, '0');
+        const sd = String(sDate.getDate()).padStart(2, '0');
+        return `${sy}-${sm}-${sd}` === dateStr;
+      });
+
+      // Tổng số phút học thực tế trong ngày
+      const dayMinutes = daySessions.reduce((acc, curr) => {
+        if (curr.duration_minutes && curr.duration_minutes > 0) {
+          return acc + curr.duration_minutes;
+        }
+        if (curr.end_time && curr.start_time) {
+          const diff = Math.max(1, Math.round((new Date(curr.end_time).getTime() - new Date(curr.start_time).getTime()) / (1000 * 60)));
+          return acc + diff;
+        }
+        return acc;
+      }, 0);
+
+      if (dayMinutes > maxMinutes) {
+        maxMinutes = dayMinutes;
+      }
+
+      // Định dạng hiển thị thời gian rõ ràng: 0p, 45p, 1h, 1h 15p
+      let formattedTime = '0p';
+      if (dayMinutes > 0) {
+        const h = Math.floor(dayMinutes / 60);
+        const m = dayMinutes % 60;
+        if (h === 0) {
+          formattedTime = `${m}p`;
+        } else if (m === 0) {
+          formattedTime = `${h}h`;
+        } else {
+          formattedTime = `${h}h ${m}p`;
+        }
+      }
+
+      const isToday = i === 0;
+
+      days.push({
+        date: dateStr,
+        dayOfWeek,
+        dayShort: dayShortNames[dayOfWeek],
+        dayFull: dayFullNames[dayOfWeek],
+        minutes: dayMinutes,
+        hours: parseFloat((dayMinutes / 60).toFixed(1)),
+        formattedTime,
+        isToday,
+        isHighest: false,
+      });
+    }
+
+    // Đánh dấu ngày có thời gian học cao nhất (để highlight trên biểu đồ)
+    if (maxMinutes > 0) {
+      const highestDay = days.find((d) => d.minutes === maxMinutes);
+      if (highestDay) {
+        highestDay.isHighest = true;
+      }
+    }
+
+    const totalWeeklyMinutes = days.reduce((sum, d) => sum + d.minutes, 0);
+    const totalWeeklyHours = parseFloat((totalWeeklyMinutes / 60).toFixed(1));
+    const averageDailyMinutes = Math.round(totalWeeklyMinutes / 7);
+
+    res.status(200).json({
+      totalWeeklyMinutes,
+      totalWeeklyHours,
+      averageDailyMinutes,
+      maxDailyMinutes: maxMinutes,
+      days,
+    });
+  } catch (error) {
+    console.error('Lỗi tính toán thời gian học 7 ngày:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};

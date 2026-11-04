@@ -21,13 +21,29 @@ model User {
   studyPlans    StudyPlan[]
   tutorSessions TutorSession[]
   flashcards    Flashcard[]
+  learningGoals LearningGoal[]
+}
+
+model LearningGoal {
+  id          Int          @id @default(autoincrement())
+  user_id     Int
+  title       String       // "Chứng chỉ AWS Solution Architect", "Lập trình Fullstack Web", "IELTS 7.0"
+  description String?      @db.Text
+  target_date DateTime?
+  status      String       @default("IN_PROGRESS") // IN_PROGRESS, ACHIEVED
+  created_at  DateTime     @default(now())
+  user        User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+
+  @@index([user_id])
 }
 
 model Course {
   id          Int          @id @default(autoincrement())
   code        String       @unique
   name        String
-  credits     Int
+  difficulty  String       @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  credits     Int?         @default(3)          // Giữ trường tương thích cho dữ liệu cũ
   enrollments Enrollment[]
   topics      Topic[]
   flashcards  Flashcard[]
@@ -37,15 +53,18 @@ model Enrollment {
   id              Int              @id @default(autoincrement())
   user_id         Int
   course_id       Int
-  semester        String
+  goal_id         Int?
+  target_goal     String           @default("Lập trình Fullstack Web")
+  semester        String?          @default("Mục tiêu 2026")
   status          String           @default("ACTIVE")
   user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   course          Course           @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  goal            LearningGoal?    @relation(fields: [goal_id], references: [id], onDelete: SetNull)
   gradeComponents GradeComponent[]
   tasks           Task[]
   studySessions   StudySession[]
 
-  @@unique([user_id, course_id, semester])
+  @@unique([user_id, course_id, target_goal])
 }
 
 model GradeComponent {
@@ -123,15 +142,26 @@ model Topic {
   @@index([course_id])
 }
 
+enum MaterialType {
+  READING
+  VIDEO
+  DOCUMENT_URL
+  CODE_SNIPPET
+}
+
 model Material {
-  id           Int      @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   topic_id     Int
   title        String
-  content_type String   @default("MARKDOWN") // TEXT, MARKDOWN, VIDEO_URL
-  content      String   @db.Text
-  order_index  Int      @default(0)
-  created_at   DateTime @default(now())
-  topic        Topic    @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+  type         MaterialType @default(READING)
+  content_type String       @default("MARKDOWN") // Giữ tương thích dữ liệu cũ
+  content      String       @db.LongText
+  file_url     String?      @db.Text
+  reading_time Int?         @default(5) // Thời gian đọc ước tính (phút)
+  order_index  Int          @default(0)
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @default(now()) @updatedAt
+  topic        Topic        @relation(fields: [topic_id], references: [id], onDelete: Cascade)
 
   @@index([topic_id])
 }

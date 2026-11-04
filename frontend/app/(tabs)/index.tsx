@@ -33,13 +33,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import axiosClient from '../../src/api/axiosClient';
 import { LearningStatistics, StudyPlanItem } from '../../src/types';
 import { PredictionData } from '../../src/types/dashboard';
-
-interface DayStudyData {
-  dayName: string;
-  dayShort: string;
-  hours: number;
-  isToday: boolean;
-}
+import WeeklyStudyChart from '../../src/components/WeeklyStudyChart';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -55,17 +49,6 @@ export default function DashboardScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   const [aiErrorMsg, setAiErrorMsg] = useState('');
 
-  // Dữ liệu biểu đồ 7 ngày gần nhất (tính từ thống kê study_sessions)
-  const [weeklyStudy, setWeeklyStudy] = useState<DayStudyData[]>([
-    { dayName: 'Thứ 2', dayShort: 'T2', hours: 1.5, isToday: false },
-    { dayName: 'Thứ 3', dayShort: 'T3', hours: 2.0, isToday: false },
-    { dayName: 'Thứ 4', dayShort: 'T4', hours: 0.8, isToday: false },
-    { dayName: 'Thứ 5', dayShort: 'T5', hours: 3.2, isToday: false },
-    { dayName: 'Thứ 6', dayShort: 'T6', hours: 2.5, isToday: false },
-    { dayName: 'Thứ 7', dayShort: 'T7', hours: 4.0, isToday: false },
-    { dayName: 'Chủ nhật', dayShort: 'CN', hours: 1.8, isToday: true },
-  ]);
-
   const fetchDashboardData = async () => {
     try {
       setErrorMsg('');
@@ -79,21 +62,6 @@ export default function DashboardScreen() {
       if (statsRes.status === 'fulfilled') {
         const statsData: LearningStatistics = statsRes.value.data;
         setStats(statsData);
-
-        // Phân bổ thời gian học 7 ngày theo dữ liệu thực tế
-        const totalHours = statsData.study_sessions?.total_study_hours || 0;
-        if (totalHours > 0) {
-          // Phân bổ mẫu dựa trên tổng số giờ học
-          setWeeklyStudy([
-            { dayName: 'Thứ 2', dayShort: 'T2', hours: parseFloat((totalHours * 0.12).toFixed(1)), isToday: false },
-            { dayName: 'Thứ 3', dayShort: 'T3', hours: parseFloat((totalHours * 0.18).toFixed(1)), isToday: false },
-            { dayName: 'Thứ 4', dayShort: 'T4', hours: parseFloat((totalHours * 0.1).toFixed(1)), isToday: false },
-            { dayName: 'Thứ 5', dayShort: 'T5', hours: parseFloat((totalHours * 0.22).toFixed(1)), isToday: false },
-            { dayName: 'Thứ 6', dayShort: 'T6', hours: parseFloat((totalHours * 0.15).toFixed(1)), isToday: false },
-            { dayName: 'Thứ 7', dayShort: 'T7', hours: parseFloat((totalHours * 0.15).toFixed(1)), isToday: false },
-            { dayName: 'Chủ nhật', dayShort: 'CN', hours: parseFloat((totalHours * 0.08).toFixed(1)), isToday: true },
-          ]);
-        }
       }
 
       if (planRes.status === 'fulfilled' && planRes.value.data?.items) {
@@ -194,7 +162,6 @@ export default function DashboardScreen() {
   }
 
   const riskInfo = prediction?.risk_level ? getRiskInfo(prediction.risk_level) : null;
-  const maxWeeklyHours = Math.max(...weeklyStudy.map((d) => d.hours), 3.0);
 
   return (
     <ScrollView
@@ -327,58 +294,8 @@ export default function DashboardScreen() {
         </View>
       )}
 
-      {/* 2. BIỂU ĐỒ HỌC TẬP (WEEKLY STUDY CHART - CỘT BO TRÒN TRÊN, TRỤC X RÕ RÀNG) */}
-      <View style={styles.chartCard}>
-        <View style={styles.chartHeader}>
-          <View>
-            <Text style={styles.chartTitle}>Thời lượng học tuần này</Text>
-            <Text style={styles.chartSub}>
-              Tổng cộng: <Text style={styles.chartSubHighlight}>{stats?.study_sessions.total_study_hours ?? 0} giờ</Text>
-            </Text>
-          </View>
-          <View style={styles.chartTrendBadge}>
-            <TrendingUp size={14} color={COLORS.success} />
-            <Text style={styles.chartTrendText}>Đều đặn</Text>
-          </View>
-        </View>
-
-        {/* Khung Biểu đồ các cột Bar */}
-        <View style={styles.barChartContainer}>
-          {weeklyStudy.map((item, index) => {
-            const barHeight = Math.max((item.hours / maxWeeklyHours) * 90, 8);
-            const isHighlight = item.isToday || item.hours >= 3.0;
-
-            return (
-              <View key={index} style={styles.barColumn}>
-                {/* Giờ học phía trên cột */}
-                <Text style={[styles.barValueText, isHighlight && styles.barValueTextActive]}>
-                  {item.hours > 0 ? `${item.hours}h` : '-'}
-                </Text>
-
-                {/* Thanh cột có bo tròn phía trên */}
-                <View style={styles.barTrack}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      {
-                        height: barHeight,
-                        backgroundColor: isHighlight ? COLORS.primary : '#C7D2FE',
-                      },
-                    ]}
-                  />
-                </View>
-
-                {/* Trục X nhãn ngày tháng */}
-                <View style={[styles.dayLabelBadge, item.isToday && styles.dayLabelBadgeToday]}>
-                  <Text style={[styles.dayLabelText, item.isToday && styles.dayLabelTextToday]}>
-                    {item.dayShort}
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </View>
+      {/* 2. BIỂU ĐỒ HỌC TẬP THỰC TẾ 7 NGÀY GẦN NHẤT */}
+      <WeeklyStudyChart refreshTrigger={refreshing ? 1 : 0} />
 
       {/* 3. LƯỚI 4 CHỈ SỐ THỐNG KÊ (STATS GRID VỚI SOFT SHADOW) */}
       <View style={styles.statsGrid}>

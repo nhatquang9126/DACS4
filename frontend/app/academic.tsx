@@ -26,11 +26,14 @@ import {
   GraduationCap,
   Award,
   Info,
+  Target,
+  Compass,
 } from 'lucide-react-native';
 import { COLORS, SIZES, SHADOWS, TYPOGRAPHY } from '../src/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axiosClient from '../src/api/axiosClient';
 import { Task, Enrollment } from '../src/types';
+import DifficultyBadge from '../src/components/DifficultyBadge';
 
 type AcademicTab = 'TASKS' | 'GRADES';
 type TaskFilter = 'ALL' | 'TODO' | 'IN_PROGRESS' | 'DONE';
@@ -50,9 +53,15 @@ export default function AcademicScreen() {
   // State Grades & Enrollments
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
 
-  // State Bộ lọc Học kỳ nâng cao (Semester Filter)
-  const [selectedSemester, setSelectedSemester] = useState<string>('ALL');
-  const [availableSemesters, setAvailableSemesters] = useState<string[]>(['ALL', 'HK1-2026', 'HK2-2026']);
+  // State Bộ lọc Mục tiêu học tập (Learning Goals Filter)
+  const [selectedGoal, setSelectedGoal] = useState<string>('ALL');
+  const [availableGoals, setAvailableGoals] = useState<string[]>([
+    'ALL',
+    'Lập trình Fullstack Web',
+    'Chứng chỉ AWS Cloud',
+    'Data Science & AI',
+    'IELTS 7.0',
+  ]);
 
   // State chung
   const [loading, setLoading] = useState(true);
@@ -68,13 +77,15 @@ export default function AcademicScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  const fetchAcademicData = async (semesterFilter: string = selectedSemester) => {
+  const fetchAcademicData = async (goalFilter: string = selectedGoal) => {
     try {
       setErrorMsg('');
-      const semParam = semesterFilter !== 'ALL' ? `?semester=${encodeURIComponent(semesterFilter)}` : '';
-      const [tasksRes, enrollmentsRes] = await Promise.allSettled([
-        axiosClient.get(`/tasks${semParam}`),
-        axiosClient.get(`/courses/my-courses${semParam}`),
+      const isAll = goalFilter === 'ALL' || goalFilter === 'Tất cả mục tiêu';
+      const goalParam = !isAll ? `?target_goal=${encodeURIComponent(goalFilter)}` : '';
+      const [tasksRes, enrollmentsRes, goalsRes] = await Promise.allSettled([
+        axiosClient.get(`/tasks${goalParam}`),
+        axiosClient.get(`/courses/my-courses${goalParam}`),
+        axiosClient.get('/courses/goals'),
       ]);
 
       if (tasksRes.status === 'fulfilled') {
@@ -84,20 +95,16 @@ export default function AcademicScreen() {
         const enrolls: Enrollment[] = enrollmentsRes.value.data || [];
         setEnrollments(enrolls);
 
-        if (semesterFilter === 'ALL' && enrolls.length > 0) {
-          const sems = new Set<string>();
-          enrolls.forEach((e) => {
-            if (e.semester) sems.add(e.semester);
-          });
-          const list = Array.from(sems);
-          if (list.length > 0) {
-            setAvailableSemesters(['ALL', ...list]);
-          }
-        }
-
         if (enrolls.length > 0 && !selectedEnrollmentId) {
           setSelectedEnrollmentId(enrolls[0].id);
         }
+      }
+
+      if (goalsRes.status === 'fulfilled' && Array.isArray(goalsRes.value.data)) {
+        const remoteGoals: string[] = goalsRes.value.data
+          .map((g: string) => (g === 'Tất cả mục tiêu' ? 'ALL' : g))
+          .filter((g: string) => g !== 'ALL');
+        setAvailableGoals(['ALL', ...remoteGoals]);
       }
     } catch (err: any) {
       setErrorMsg('Không thể tải đầy đủ dữ liệu học vụ');
@@ -109,18 +116,18 @@ export default function AcademicScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchAcademicData(selectedSemester);
-    }, [selectedSemester])
+      fetchAcademicData(selectedGoal);
+    }, [selectedGoal])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchAcademicData(selectedSemester);
+    fetchAcademicData(selectedGoal);
   };
 
-  const handleSelectSemester = (sem: string) => {
-    setSelectedSemester(sem);
-    fetchAcademicData(sem);
+  const handleSelectGoal = (goal: string) => {
+    setSelectedGoal(goal);
+    fetchAcademicData(goal);
   };
 
   // Toggle trạng thái Task bằng Checkbox hình tròn
@@ -282,30 +289,30 @@ export default function AcademicScreen() {
           >
             <GraduationCap size={16} color={activeTab === 'GRADES' ? COLORS.primary : COLORS.textSecondary} />
             <Text style={[styles.segmentText, activeTab === 'GRADES' && styles.segmentTextActive]}>
-              Bảng điểm ({enrollments.length})
+              Tiến độ kỹ năng ({enrollments.length})
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* BỘ LỌC HỌC KỲ NÂNG CAO (SEMESTER FILTER BAR) */}
+      {/* BỘ LỌC MỤC TIÊU HỌC TẬP (LEARNING GOALS FILTER BAR) */}
       <View style={styles.semesterBarWrapper}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.semesterScrollContent}
         >
-          {availableSemesters.map((sem) => {
-            const isSelected = selectedSemester === sem;
-            const label = sem === 'ALL' ? 'Tất cả học kỳ' : sem;
+          {availableGoals.map((goal) => {
+            const isSelected = selectedGoal === goal;
+            const label = goal === 'ALL' ? 'Tất cả mục tiêu' : goal;
             return (
               <TouchableOpacity
-                key={sem}
+                key={goal}
                 style={[styles.semesterChip, isSelected && styles.semesterChipActive]}
-                onPress={() => handleSelectSemester(sem)}
+                onPress={() => handleSelectGoal(goal)}
                 activeOpacity={0.7}
               >
-                <Calendar size={13} color={isSelected ? '#FFFFFF' : COLORS.textSecondary} />
+                <Target size={13} color={isSelected ? '#FFFFFF' : COLORS.textSecondary} />
                 <Text style={[styles.semesterChipText, isSelected && styles.semesterChipTextActive]}>
                   {label}
                 </Text>
@@ -466,18 +473,20 @@ export default function AcademicScreen() {
 
               <View style={styles.summaryGrid}>
                 <View style={styles.summaryBox}>
-                  <Text style={styles.summaryBoxValue}>{totalEnrolledCredits}</Text>
-                  <Text style={styles.summaryBoxLabel}>Tổng số tín chỉ</Text>
+                  <Text style={styles.summaryBoxValue}>{enrollments.length}</Text>
+                  <Text style={styles.summaryBoxLabel}>Môn / Kỹ năng</Text>
                 </View>
                 <View style={styles.summaryBox}>
-                  <Text style={styles.summaryBoxValue}>{enrollments.length}</Text>
-                  <Text style={styles.summaryBoxLabel}>Môn đang học</Text>
+                  <Text style={styles.summaryBoxValue}>
+                    {tasks.filter((t) => t.status === 'DONE').length}/{tasks.length}
+                  </Text>
+                  <Text style={styles.summaryBoxLabel}>Nhiệm vụ xong</Text>
                 </View>
                 <View style={styles.summaryBox}>
                   <Text style={styles.summaryBoxValue}>
                     {enrollments.filter((e) => e.summary?.isFinalScore).length}
                   </Text>
-                  <Text style={styles.summaryBoxLabel}>Môn đủ điểm</Text>
+                  <Text style={styles.summaryBoxLabel}>Hoàn thành 100%</Text>
                 </View>
               </View>
             </View>
@@ -501,8 +510,8 @@ export default function AcademicScreen() {
                           <View style={styles.codeTag}>
                             <Text style={styles.codeTagText}>{course?.code || 'MÔN'}</Text>
                           </View>
-                          <Text style={styles.creditText}>{course?.credits || 0} tín chỉ</Text>
-                          <Text style={styles.semesterText}>• {item.semester}</Text>
+                          <DifficultyBadge difficulty={course?.difficulty} credits={course?.credits} />
+                          <Text style={styles.semesterText}>• {item.target_goal || item.semester}</Text>
                         </View>
                         <Text style={styles.courseName}>{course?.name}</Text>
                       </View>

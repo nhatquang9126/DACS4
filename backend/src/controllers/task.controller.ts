@@ -17,12 +17,22 @@ status: z.enum(['TODO', 'IN_PROGRESS', 'DONE'], { error: 'Trạng thái không h
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const { semester } = req.query;
+    const { semester, target_goal, goal } = req.query;
+
+    const activeFilter = ((target_goal || goal || semester) as string | undefined)?.trim();
 
     const whereCondition: any = { user_id: userId };
-    if (semester && typeof semester === 'string' && semester.trim() !== '' && semester !== 'ALL') {
+    if (
+      activeFilter &&
+      activeFilter !== '' &&
+      activeFilter !== 'ALL' &&
+      activeFilter !== 'Tất cả mục tiêu'
+    ) {
       whereCondition.enrollment = {
-        semester: semester.trim(),
+        OR: [
+          { target_goal: activeFilter },
+          { semester: activeFilter },
+        ],
       };
     }
 

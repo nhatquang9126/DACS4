@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES, TYPOGRAPHY } from '../../src/constants/theme';
 import axiosClient from '../../src/api/axiosClient';
 import { Enrollment, Course } from '../../src/types';
+import DifficultyBadge from '../../src/components/DifficultyBadge';
 
 export default function CoursesScreen() {
   const insets = useSafeAreaInsets();
@@ -91,7 +92,7 @@ const renderCourseItem = ({ item }: { item: Enrollment }) => {
         <View style={styles.codeBadge}>
             <Text style={styles.codeText}>{item.course.code}</Text>
         </View>
-        <Text style={styles.semesterText}>{item.semester}</Text>
+        <Text style={styles.semesterText}>{item.target_goal || item.semester}</Text>
         </View>
 
         <Text style={styles.courseName}>{item.course.name}</Text>
@@ -105,10 +106,7 @@ const renderCourseItem = ({ item }: { item: Enrollment }) => {
         ) : null}
 
         <View style={styles.cardFooter}>
-        <View style={styles.creditInfo}>
-            <Award size={16} color={COLORS.textSecondary} />
-            <Text style={styles.creditText}>{item.course.credits} Tín chỉ</Text>
-        </View>
+        <DifficultyBadge difficulty={item.course.difficulty} credits={item.course.credits} />
         <View style={styles.actionBtn}>
             <Text style={styles.actionText}>Vào bài học</Text>
             <ChevronRight size={18} color={COLORS.primary} />
@@ -192,10 +190,10 @@ if (loading && !refreshing) {
                 const isEnrolled = enrollments.some((e) => e.course.id === item.id);
                 return (
                 <View style={styles.catalogItem}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, gap: 4 }}>
                     <Text style={styles.catalogCode}>{item.code}</Text>
                     <Text style={styles.catalogName}>{item.name}</Text>
-                    <Text style={styles.catalogCredits}>{item.credits} tín chỉ</Text>
+                    <DifficultyBadge difficulty={item.difficulty} credits={item.credits} />
                     </View>
 
                     {isEnrolled ? (

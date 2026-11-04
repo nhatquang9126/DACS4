@@ -46,10 +46,10 @@ const course = await prisma.course.upsert({
 // 3. Seed Enrollment
 const enrollment = await prisma.enrollment.upsert({
     where: {
-    user_id_course_id_semester: {
+    user_id_course_id_target_goal: {
         user_id: user.id,
         course_id: course.id,
-        semester: 'HK1-2026',
+        target_goal: 'Lập trình Fullstack Web',
     },
     },
     update: {},
@@ -58,6 +58,7 @@ const enrollment = await prisma.enrollment.upsert({
     user_id: user.id,
     course_id: course.id,
     semester: 'HK1-2026',
+    target_goal: 'Lập trình Fullstack Web',
     status: 'ACTIVE',
     },
 });

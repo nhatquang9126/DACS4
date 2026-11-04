@@ -3,6 +3,8 @@ import {
   createCourse,
   createTopic,
   createMaterial,
+  updateMaterial,
+  deleteMaterial,
   createQuiz,
   createQuestion,
   getStudentsOverview,
@@ -19,6 +21,9 @@ router.use(authenticate, authorize(['ADMIN']));
 router.post('/courses', createCourse);
 router.post('/topics', createTopic);
 router.post('/materials', createMaterial);
+router.put('/materials/:id', updateMaterial);
+router.patch('/materials/:id', updateMaterial);
+router.delete('/materials/:id', deleteMaterial);
 router.post('/quizzes', createQuiz);
 router.post('/questions', createQuestion);
 

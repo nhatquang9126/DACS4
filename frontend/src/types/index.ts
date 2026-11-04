@@ -28,7 +28,8 @@ export interface Course {
 id: number;
 code: string;
 name: string;
-credits: number;
+credits?: number;
+difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | string;
 topics?: Topic[];
 }
 
@@ -50,11 +51,32 @@ note: string;
 
 export interface Enrollment {
 id: number;
-semester: string;
+semester?: string;
+target_goal?: string;
 status: string;
 course: Course;
 gradeComponents?: GradeComponent[];
 summary?: EnrollmentSummary;
+}
+
+export interface WeeklyStudyDay {
+date: string;
+dayOfWeek: number;
+dayShort: string;
+dayFull: string;
+minutes: number;
+hours: number;
+formattedTime: string;
+isToday: boolean;
+isHighest: boolean;
+}
+
+export interface WeeklyStudyTimeResponse {
+totalWeeklyMinutes: number;
+totalWeeklyHours: number;
+averageDailyMinutes: number;
+maxDailyMinutes: number;
+days: WeeklyStudyDay[];
 }
 
 export interface Task {
@@ -90,14 +112,45 @@ created_at: string;
 items: StudyPlanItem[];
 }
 
+export type MaterialType = 'READING' | 'VIDEO' | 'DOCUMENT_URL' | 'CODE_SNIPPET';
+
 export interface Material {
-id: number;
-topic_id: number;
-title: string;
-content_type: 'MARKDOWN' | 'TEXT' | 'VIDEO_URL' | string;
-content: string;
-order_index: number;
-created_at?: string;
+  id: number;
+  topic_id: number;
+  topicId?: number;
+  title: string;
+  type?: MaterialType | string;
+  content_type?: 'MARKDOWN' | 'TEXT' | 'VIDEO_URL' | string;
+  content: string;
+  file_url?: string | null;
+  fileUrl?: string | null;
+  reading_time?: number | null;
+  readingTime?: number | null;
+  order_index?: number;
+  orderIndex?: number;
+  created_at?: string;
+  updated_at?: string;
+  topic?: {
+    id: number;
+    title: string;
+    course?: {
+      id: number;
+      code: string;
+      name: string;
+    };
+  };
+  next_material?: {
+    id: number;
+    title: string;
+    type?: MaterialType | string;
+    reading_time?: number | null;
+  } | null;
+  nextMaterial?: {
+    id: number;
+    title: string;
+    type?: MaterialType | string;
+    reading_time?: number | null;
+  } | null;
 }
 
 export interface Question {

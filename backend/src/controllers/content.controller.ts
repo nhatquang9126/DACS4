@@ -123,7 +123,42 @@ try {
     return;
     }
 
-    res.status(200).json(material);
+    // Tìm bài học tiếp theo trong cùng chủ đề
+    const nextMaterial = await prisma.material.findFirst({
+      where: {
+        topic_id: material.topic_id,
+        order_index: { gt: material.order_index },
+      },
+      orderBy: { order_index: 'asc' },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        reading_time: true,
+      },
+    });
+
+    const fallbackNext = !nextMaterial
+      ? await prisma.material.findFirst({
+          where: {
+            topic_id: material.topic_id,
+            id: { gt: material.id },
+          },
+          orderBy: { id: 'asc' },
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            reading_time: true,
+          },
+        })
+      : null;
+
+    res.status(200).json({
+      ...material,
+      next_material: nextMaterial || fallbackNext,
+      nextMaterial: nextMaterial || fallbackNext,
+    });
 } catch (error) {
     console.error('Lỗi xem chi tiết tài liệu:', error);
     res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });

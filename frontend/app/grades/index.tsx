@@ -24,6 +24,7 @@ import { COLORS, SIZES } from '../../src/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axiosClient from '../../src/api/axiosClient';
 import { Enrollment } from '../../src/types';
+import DifficultyBadge from '../../src/components/DifficultyBadge';
 
 export default function GradesScreen() {
   const insets = useSafeAreaInsets();
@@ -132,12 +133,12 @@ export default function GradesScreen() {
 
           <View style={styles.summaryGrid}>
             <View style={styles.summaryBox}>
-              <Text style={styles.summaryBoxValue}>{totalEnrolledCredits}</Text>
-              <Text style={styles.summaryBoxLabel}>Tổng số tín chỉ</Text>
+              <Text style={styles.summaryBoxValue}>{enrollments.length}</Text>
+              <Text style={styles.summaryBoxLabel}>Môn / Kỹ năng</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryBoxValue}>{enrollments.length}</Text>
-              <Text style={styles.summaryBoxLabel}>Môn đang học</Text>
+              <Text style={styles.summaryBoxLabel}>Đang theo học</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryBoxValue}>
@@ -169,8 +170,8 @@ export default function GradesScreen() {
                       <View style={styles.codeTag}>
                         <Text style={styles.codeTagText}>{course?.code || 'MÔN'}</Text>
                       </View>
-                      <Text style={styles.creditText}>{course?.credits || 0} tín chỉ</Text>
-                      <Text style={styles.semesterText}>• {item.semester}</Text>
+                      <DifficultyBadge difficulty={course?.difficulty} credits={course?.credits} />
+                      <Text style={styles.semesterText}>• {item.target_goal || item.semester}</Text>
                     </View>
                     <Text style={styles.courseName}>{course?.name}</Text>
                   </View>

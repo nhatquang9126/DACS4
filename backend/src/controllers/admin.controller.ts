@@ -6,7 +6,8 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 const createCourseSchema = z.object({
   code: z.string().trim().min(2, 'Mã môn học phải từ 2 ký tự trở lên'),
   name: z.string().trim().min(3, 'Tên môn học phải từ 3 ký tự trở lên'),
-  credits: z.number().int().positive('Số tín chỉ phải lớn hơn 0'),
+  credits: z.number().int().positive('Số tín chỉ phải lớn hơn 0').optional().nullable(),
+  difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional().default('BEGINNER'),
 });
 
 const createTopicSchema = z.object({
@@ -16,12 +17,33 @@ const createTopicSchema = z.object({
   order_index: z.number().int().optional(),
 });
 
+const materialTypeEnum = z.enum(['READING', 'VIDEO', 'DOCUMENT_URL', 'CODE_SNIPPET']);
+
 const createMaterialSchema = z.object({
-  topic_id: z.number().int().positive('Mã chủ đề không hợp lệ'),
-  title: z.string().trim().min(3, 'Tiêu đề bài giảng không được để trống'),
-  content: z.string().min(5, 'Nội dung bài giảng không được để trống'),
-  content_type: z.enum(['MARKDOWN', 'TEXT', 'VIDEO_URL']).default('MARKDOWN'),
-  order_index: z.number().int().optional(),
+  topic_id: z.coerce.number().int().positive('Mã chủ đề không hợp lệ').optional(),
+  topicId: z.coerce.number().int().positive('Mã chủ đề không hợp lệ').optional(),
+  title: z.string().trim().min(2, 'Tiêu đề tài liệu không được để trống'),
+  type: materialTypeEnum.default('READING'),
+  content_type: z.string().optional(),
+  content: z.string().min(1, 'Nội dung tài liệu không được để trống'),
+  file_url: z.string().trim().optional().nullable(),
+  fileUrl: z.string().trim().optional().nullable(),
+  reading_time: z.coerce.number().int().min(1).optional().nullable(),
+  readingTime: z.coerce.number().int().min(1).optional().nullable(),
+  order_index: z.coerce.number().int().optional().default(0),
+  orderIndex: z.coerce.number().int().optional(),
+});
+
+const updateMaterialSchema = z.object({
+  title: z.string().trim().min(2, 'Tiêu đề tài liệu không được để trống').optional(),
+  type: materialTypeEnum.optional(),
+  content: z.string().min(1, 'Nội dung tài liệu không được để trống').optional(),
+  file_url: z.string().trim().optional().nullable(),
+  fileUrl: z.string().trim().optional().nullable(),
+  reading_time: z.coerce.number().int().min(1).optional().nullable(),
+  readingTime: z.coerce.number().int().min(1).optional().nullable(),
+  order_index: z.coerce.number().int().optional(),
+  orderIndex: z.coerce.number().int().optional(),
 });
 
 const createQuizSchema = z.object({
@@ -84,17 +106,36 @@ export const createTopic = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
-// 3. POST /api/admin/materials - Đăng bài giảng Markdown
+// 3. POST /api/admin/materials - Đăng bài giảng / Tài liệu học tập mới
 export const createMaterial = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const data = createMaterialSchema.parse(req.body);
+    const raw = createMaterialSchema.parse(req.body);
+    const topicId = raw.topic_id || raw.topicId;
+    if (!topicId) {
+      res.status(400).json({ message: 'Mã chủ đề (topic_id) không được để trống' });
+      return;
+    }
+
+    const topic = await prisma.topic.findUnique({ where: { id: topicId } });
+    if (!topic) {
+      res.status(404).json({ message: 'Không tìm thấy chủ đề' });
+      return;
+    }
+
+    const fileUrl = raw.file_url ?? raw.fileUrl ?? null;
+    const readingTime = raw.reading_time ?? raw.readingTime ?? 5;
+    const orderIndex = raw.order_index ?? raw.orderIndex ?? 0;
+
     const material = await prisma.material.create({
       data: {
-        topic_id: data.topic_id,
-        title: data.title,
-        content: data.content,
-        content_type: data.content_type,
-        order_index: data.order_index ?? 0,
+        topic_id: topicId,
+        title: raw.title,
+        type: raw.type,
+        content_type: raw.content_type || (raw.type === 'VIDEO' ? 'VIDEO_URL' : 'MARKDOWN'),
+        content: raw.content,
+        file_url: fileUrl,
+        reading_time: readingTime,
+        order_index: orderIndex,
       },
     });
     res.status(201).json(material);
@@ -103,6 +144,81 @@ export const createMaterial = async (req: AuthRequest, res: Response): Promise<v
       res.status(400).json({ message: 'Dữ liệu không hợp lệ', errors: error.issues });
       return;
     }
+    console.error('Lỗi tạo tài liệu:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// PUT /api/admin/materials/:id - Chỉnh sửa / Cập nhật tài liệu
+export const updateMaterial = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const materialId = Number(req.params.id);
+    if (!Number.isInteger(materialId) || materialId <= 0) {
+      res.status(400).json({ message: 'Mã tài liệu không hợp lệ' });
+      return;
+    }
+
+    const existing = await prisma.material.findUnique({ where: { id: materialId } });
+    if (!existing) {
+      res.status(404).json({ message: 'Không tìm thấy tài liệu học tập' });
+      return;
+    }
+
+    const raw = updateMaterialSchema.parse(req.body);
+
+    const updateData: any = {};
+    if (raw.title !== undefined) updateData.title = raw.title;
+    if (raw.type !== undefined) {
+      updateData.type = raw.type;
+      updateData.content_type = raw.type === 'VIDEO' ? 'VIDEO_URL' : 'MARKDOWN';
+    }
+    if (raw.content !== undefined) updateData.content = raw.content;
+    if (raw.file_url !== undefined || raw.fileUrl !== undefined) {
+      updateData.file_url = raw.file_url ?? raw.fileUrl ?? null;
+    }
+    if (raw.reading_time !== undefined || raw.readingTime !== undefined) {
+      updateData.reading_time = raw.reading_time ?? raw.readingTime ?? null;
+    }
+    if (raw.order_index !== undefined || raw.orderIndex !== undefined) {
+      updateData.order_index = raw.order_index ?? raw.orderIndex ?? 0;
+    }
+
+    const updated = await prisma.material.update({
+      where: { id: materialId },
+      data: updateData,
+    });
+
+    res.status(200).json(updated);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Dữ liệu không hợp lệ', errors: error.issues });
+      return;
+    }
+    console.error('Lỗi cập nhật tài liệu:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// DELETE /api/admin/materials/:id - Xóa tài liệu
+export const deleteMaterial = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const materialId = Number(req.params.id);
+    if (!Number.isInteger(materialId) || materialId <= 0) {
+      res.status(400).json({ message: 'Mã tài liệu không hợp lệ' });
+      return;
+    }
+
+    const existing = await prisma.material.findUnique({ where: { id: materialId } });
+    if (!existing) {
+      res.status(404).json({ message: 'Không tìm thấy tài liệu học tập' });
+      return;
+    }
+
+    await prisma.material.delete({ where: { id: materialId } });
+
+    res.status(200).json({ message: 'Đã xóa tài liệu thành công', id: materialId });
+  } catch (error) {
+    console.error('Lỗi xóa tài liệu:', error);
     res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
   }
 };
