@@ -3,6 +3,7 @@ import os from 'os';
 import axios from 'axios';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { logAdminAction } from '../utils/activityLogger';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -128,6 +129,15 @@ export const triggerBackup = async (req: AuthRequest, res: Response): Promise<vo
         notifications,
       },
     };
+
+    await logAdminAction(
+      req,
+      'BACKUP',
+      'System',
+      null,
+      `Sao lưu CSDL hệ thống: ${courses.length} môn học, ${topics.length} chủ đề, ${sections.length} phần học, ${configs.length} cấu hình`,
+      { newData: backupData.summary }
+    );
 
     res.status(200).json({
       message: 'Tạo bản sao lưu dữ liệu thành công',

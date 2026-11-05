@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { parsePaginationParams, searchFilter, formatPaginatedResponse } from '../utils/pagination';
+import { logAdminAction } from '../utils/activityLogger';
 
 const createSectionSchema = z.object({
   topic_id: z.coerce.number().int().positive('Mã chủ đề không hợp lệ').optional(),
@@ -227,6 +228,15 @@ export const createSection = async (req: AuthRequest, res: Response): Promise<vo
       },
     });
 
+    await logAdminAction(
+      req,
+      'CREATE',
+      'TopicSection',
+      section.id,
+      `Tạo phần học mới: "${section.title}" (Chủ đề: ${section.topic.title})`,
+      { newData: section }
+    );
+
     res.status(201).json(section);
   } catch (error: any) {
     if (error?.name === 'ZodError') {
@@ -281,6 +291,15 @@ export const updateSection = async (req: AuthRequest, res: Response): Promise<vo
       },
     });
 
+    await logAdminAction(
+      req,
+      'UPDATE',
+      'TopicSection',
+      id,
+      `Cập nhật phần học: "${section.title}"`,
+      { oldData: existing, newData: section }
+    );
+
     res.status(200).json(section);
   } catch (error: any) {
     if (error?.name === 'ZodError') {
@@ -326,6 +345,16 @@ export const deleteSection = async (req: AuthRequest, res: Response): Promise<vo
     }
 
     await prisma.topicSection.delete({ where: { id } });
+
+    await logAdminAction(
+      req,
+      'DELETE',
+      'TopicSection',
+      id,
+      `Xóa phần học: "${existing.title}"`,
+      { oldData: existing }
+    );
+
     res.status(200).json({
       message: `Đã xóa thành công phần học "${existing.title}"`,
       id,

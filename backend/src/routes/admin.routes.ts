@@ -14,11 +14,14 @@ import {
 import { getSystemHealth, triggerBackup } from '../controllers/system.controller';
 
 // Audit Logs
-import { getAuditLogs } from '../controllers/auditLog.controller';
+import { getAuditLogs, getAuditLogById } from '../controllers/auditLog.controller';
 
 // Notifications
 import {
   getNotifications,
+  getUnreadNotificationCount,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
   createNotification,
   updateNotification,
   deleteNotification,
@@ -189,10 +192,14 @@ router.put('/ai-monitor/config/:key', updateAIConfig);
 // 9. AUDIT LOGS
 // ==========================================
 router.get('/audit-logs', getAuditLogs);
+router.get('/audit-logs/:id', getAuditLogById);
 
 // ==========================================
 // 10. NOTIFICATIONS
 // ==========================================
+router.get('/notifications/unread-count', getUnreadNotificationCount);
+router.patch('/notifications/read-all', markAllNotificationsAsRead);
+router.patch('/notifications/:id/read', markNotificationAsRead);
 router.get('/notifications', getNotifications);
 router.post('/notifications', createNotification);
 router.put('/notifications/:id', updateNotification);

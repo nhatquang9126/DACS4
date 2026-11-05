@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { logAdminAction, createAdminNotification } from '../utils/activityLogger';
 
 const userRoleEnum = z.enum(['STUDENT', 'TEACHER', 'ADMIN']);
 
@@ -234,6 +235,15 @@ export const createUser = async (req: AuthRequest, res: Response): Promise<void>
       },
     });
 
+    await logAdminAction(
+      req,
+      'CREATE',
+      'User',
+      newUser.id,
+      `Tạo tài khoản người dùng: "${newUser.email}" (Vai trò: ${newUser.role})`,
+      { newData: newUser }
+    );
+
     res.status(201).json(newUser);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -299,6 +309,15 @@ export const updateUser = async (req: AuthRequest, res: Response): Promise<void>
       },
     });
 
+    await logAdminAction(
+      req,
+      'UPDATE',
+      'User',
+      userId,
+      `Cập nhật thông tin tài khoản: "${updated.email}"`,
+      { oldData: { email: existing.email, role: existing.role }, newData: updated }
+    );
+
     res.status(200).json(updated);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -323,11 +342,34 @@ export const lockUser = async (req: AuthRequest, res: Response): Promise<void> =
       res.status(404).json({ message: 'Không tìm thấy người dùng' });
       return;
     }
+
+    const willLock = !user.is_locked;
     const updated = await prisma.user.update({
       where: { id: userId },
-      data: { is_locked: !user.is_locked, status: !user.is_locked ? 'LOCKED' : 'ACTIVE' },
-      select: { id: true, email: true, role: true, is_locked: true, status: true }
+      data: { is_locked: willLock, status: willLock ? 'LOCKED' : 'ACTIVE' },
+      select: { id: true, email: true, role: true, is_locked: true, status: true },
     });
+
+    // 1. Ghi Activity Log
+    await logAdminAction(
+      req,
+      willLock ? 'LOCK' : 'UNLOCK',
+      'User',
+      userId,
+      willLock ? `Khóa tài khoản người dùng: "${user.email}"` : `Mở khóa tài khoản người dùng: "${user.email}"`,
+      { oldData: user, newData: updated }
+    );
+
+    // 2. Tạo thông báo hệ thống gửi Admin
+    await createAdminNotification({
+      title: willLock ? 'Tài khoản người dùng bị khóa' : 'Tài khoản người dùng được mở khóa',
+      content: `Tài khoản ${user.email} (${user.role}) đã được ${willLock ? 'khóa' : 'mở khóa'} bởi Quản trị viên.`,
+      type: willLock ? 'USER_LOCKED' : 'USER_UNLOCKED',
+      target: 'ADMIN',
+      linkUrl: '/admin/users',
+      createdBy: req.user?.email,
+    });
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server' });
@@ -347,11 +389,28 @@ export const changeUserRole = async (req: AuthRequest, res: Response): Promise<v
       res.status(400).json({ message: 'Role không hợp lệ' });
       return;
     }
+
+    const existing = await prisma.user.findUnique({ where: { id: userId } });
+    if (!existing) {
+      res.status(404).json({ message: 'Không tìm thấy người dùng' });
+      return;
+    }
+
     const updated = await prisma.user.update({
       where: { id: userId },
       data: { role },
-      select: { id: true, email: true, role: true, status: true }
+      select: { id: true, email: true, role: true, status: true },
     });
+
+    await logAdminAction(
+      req,
+      'ROLE_CHANGE',
+      'User',
+      userId,
+      `Đổi vai trò người dùng "${existing.email}" từ ${existing.role} sang ${role}`,
+      { oldData: { role: existing.role }, newData: { role } }
+    );
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server' });
@@ -366,11 +425,28 @@ export const softDeleteUser = async (req: AuthRequest, res: Response): Promise<v
       res.status(400).json({ message: 'Không thể vô hiệu hóa tài khoản của chính mình' });
       return;
     }
+
+    const existing = await prisma.user.findUnique({ where: { id: userId } });
+    if (!existing) {
+      res.status(404).json({ message: 'Không tìm thấy người dùng' });
+      return;
+    }
+
     const updated = await prisma.user.update({
       where: { id: userId },
       data: { status: 'DISABLED', is_locked: true },
-      select: { id: true, email: true, role: true, status: true, is_locked: true }
+      select: { id: true, email: true, role: true, status: true, is_locked: true },
     });
+
+    await logAdminAction(
+      req,
+      'DELETE',
+      'User',
+      userId,
+      `Vô hiệu hóa tài khoản (Soft Delete): "${existing.email}"`,
+      { oldData: existing, newData: updated }
+    );
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server' });
@@ -408,6 +484,15 @@ export const deleteUser = async (req: AuthRequest, res: Response): Promise<void>
     }
 
     await prisma.user.delete({ where: { id: userId } });
+
+    await logAdminAction(
+      req,
+      'DELETE',
+      'User',
+      userId,
+      `Xóa vĩnh viễn tài khoản người dùng: "${existing.email}" (${existing.role})`,
+      { oldData: existing }
+    );
 
     res.status(200).json({
       message: `Đã xóa tài khoản "${existing.email}" thành công`,

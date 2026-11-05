@@ -320,19 +320,22 @@ model AuditLog {
   id          Int      @id @default(autoincrement())
   user_id     Int?
   user_email  String?
-  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, LOCK, UNLOCK
-  entity      String   // User, Course, Topic, Material, etc.
+  user_role   String?  @default("ADMIN")
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, LOCK, UNLOCK, ROLE_CHANGE, CONFIG_UPDATE, BACKUP
+  entity      String   // User, Course, Topic, TopicSection, Material, Quiz, AIConfig, SystemNotification, System
   entity_id   String?
   description String   @db.Text
   ip_address  String?
   user_agent  String?  @db.Text
   old_data    String?  @db.LongText // JSON snapshot before change
   new_data    String?  @db.LongText // JSON snapshot after change
+  status      String   @default("SUCCESS") // SUCCESS, FAILED
   created_at  DateTime @default(now())
   user        User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([entity])
+  @@index([action])
   @@index([created_at])
 }
 
@@ -366,15 +369,22 @@ model SystemNotification {
   id           Int                @id @default(autoincrement())
   title        String
   content      String             @db.Text
-  type         String             @default("INFO") // INFO, WARNING, SUCCESS, ERROR
-  target       String             @default("ALL")  // ALL, ADMIN, USER, or specific user_id
-  is_published Boolean            @default(false)
-  published_at DateTime?
+  type         String             @default("INFO") // INFO, WARNING, SUCCESS, ERROR, USER_REGISTER, USER_LOCKED, USER_UNLOCKED, SERVICE_ALERT
+  target       String             @default("ALL")  // ALL, ADMIN, STUDENT
+  link_url     String?            // URL điều hướng khi click (ví dụ: /admin/users)
+  is_read      Boolean            @default(false)  // Tiện ích đánh dấu đã đọc
+  read_at      DateTime?
+  is_published Boolean            @default(true)
+  published_at DateTime?          @default(now())
   expires_at   DateTime?
   created_by   String?
   created_at   DateTime           @default(now())
   updated_at   DateTime           @default(now()) @updatedAt
   reads        UserNotification[]
+
+  @@index([target])
+  @@index([is_read])
+  @@index([created_at])
 }
 
 model UserNotification {

@@ -3,6 +3,7 @@ import axios from 'axios';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { parsePaginationParams, searchFilter, formatPaginatedResponse } from '../utils/pagination';
+import { logAdminAction } from '../utils/activityLogger';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -230,6 +231,15 @@ export const updateAIConfig = async (req: AuthRequest, res: Response): Promise<v
         updated_by: req.user?.email || 'admin',
       },
     });
+
+    await logAdminAction(
+      req,
+      'CONFIG_UPDATE',
+      'AIConfig',
+      config.id,
+      `Thay đổi tham số cấu hình hệ thống: "${key}" = "${value}"`,
+      { newData: config }
+    );
 
     res.status(200).json(config);
   } catch (error) {

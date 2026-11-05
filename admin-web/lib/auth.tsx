@@ -48,11 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/admin/dashboard');
   };
 
-  const logout = () => {
-    clearAuth();
-    setUser(null);
-    setToken(null);
-    router.push('/login');
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Bỏ qua lỗi mạng khi đăng xuất
+    } finally {
+      clearAuth();
+      setUser(null);
+      setToken(null);
+      router.push('/login');
+    }
   };
 
   return (

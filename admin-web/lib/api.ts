@@ -150,15 +150,24 @@ export const aiMonitorApi = {
 // Audit Logs
 export const auditLogsApi = {
   list: (params?: Record<string, any>) => api.get('/admin/audit-logs', { params }),
+  getById: (id: number) => api.get(`/admin/audit-logs/${id}`),
 };
 
 // Notifications
 export const notificationsApi = {
   list: (params?: Record<string, any>) => api.get('/admin/notifications', { params }),
+  unreadCount: () => api.get('/admin/notifications/unread-count'),
+  markAsRead: (id: number) => api.patch(`/admin/notifications/${id}/read`),
+  markAllAsRead: () => api.patch('/admin/notifications/read-all'),
   create: (data: object) => api.post('/admin/notifications', data),
   update: (id: number, data: object) => api.put(`/admin/notifications/${id}`, data),
   delete: (id: number) => api.delete(`/admin/notifications/${id}`),
   publish: (id: number) => api.post(`/admin/notifications/${id}/publish`),
+};
+
+// Auth API
+export const authApi = {
+  logout: () => api.post('/auth/logout'),
 };
 
 // System

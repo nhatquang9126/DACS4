@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { logAdminAction } from '../utils/activityLogger';
 
 // ==========================================
 // ZOD VALIDATION SCHEMAS
@@ -369,6 +370,15 @@ export const createCourse = async (req: AuthRequest, res: Response): Promise<voi
       },
     });
 
+    await logAdminAction(
+      req,
+      'CREATE',
+      'Course',
+      course.id,
+      `Tạo môn học mới: "${course.name}" (${course.code})`,
+      { newData: course }
+    );
+
     res.status(201).json(course);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -415,6 +425,15 @@ export const updateCourse = async (req: AuthRequest, res: Response): Promise<voi
       },
     });
 
+    await logAdminAction(
+      req,
+      'UPDATE',
+      'Course',
+      courseId,
+      `Cập nhật thông tin môn học: "${updated.name}" (${updated.code})`,
+      { oldData: existing, newData: updated }
+    );
+
     res.status(200).json(updated);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -449,6 +468,15 @@ export const deleteCourse = async (req: AuthRequest, res: Response): Promise<voi
 
     // Xóa an toàn Course (Prisma cascade sẽ tự động xử lý do onDelete: Cascade)
     await prisma.course.delete({ where: { id: courseId } });
+
+    await logAdminAction(
+      req,
+      'DELETE',
+      'Course',
+      courseId,
+      `Xóa môn học: "${existing.name}" (${existing.code})`,
+      { oldData: existing }
+    );
 
     res.status(200).json({
       message: `Đã xóa thành công môn học "${existing.name}" (${existing.code})`,
@@ -673,6 +701,15 @@ export const createTopic = async (req: AuthRequest, res: Response): Promise<void
       },
     });
 
+    await logAdminAction(
+      req,
+      'CREATE',
+      'Topic',
+      topic.id,
+      `Tạo chủ đề mới: "${topic.title}" (Thuộc môn ${topic.course.code})`,
+      { newData: topic }
+    );
+
     res.status(201).json(topic);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -726,6 +763,15 @@ export const updateTopic = async (req: AuthRequest, res: Response): Promise<void
       },
     });
 
+    await logAdminAction(
+      req,
+      'UPDATE',
+      'Topic',
+      topicId,
+      `Cập nhật chủ đề: "${updated.title}"`,
+      { oldData: existing, newData: updated }
+    );
+
     res.status(200).json(updated);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -753,6 +799,15 @@ export const deleteTopic = async (req: AuthRequest, res: Response): Promise<void
     }
 
     await prisma.topic.delete({ where: { id: topicId } });
+
+    await logAdminAction(
+      req,
+      'DELETE',
+      'Topic',
+      topicId,
+      `Xóa chủ đề: "${existing.title}"`,
+      { oldData: existing }
+    );
 
     res.status(200).json({
       message: `Đã xóa thành công chủ đề "${existing.title}"`,
@@ -928,6 +983,15 @@ export const createMaterial = async (req: AuthRequest, res: Response): Promise<v
       },
     });
 
+    await logAdminAction(
+      req,
+      'CREATE',
+      'Material',
+      material.id,
+      `Tạo tài liệu học tập mới: "${material.title}" (Chủ đề: ${material.topic.title})`,
+      { newData: material }
+    );
+
     res.status(201).json(material);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -997,6 +1061,15 @@ export const updateMaterial = async (req: AuthRequest, res: Response): Promise<v
       },
     });
 
+    await logAdminAction(
+      req,
+      'UPDATE',
+      'Material',
+      materialId,
+      `Cập nhật tài liệu học tập: "${updated.title}"`,
+      { oldData: existing, newData: updated }
+    );
+
     res.status(200).json(updated);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -1024,6 +1097,15 @@ export const deleteMaterial = async (req: AuthRequest, res: Response): Promise<v
     }
 
     await prisma.material.delete({ where: { id: materialId } });
+
+    await logAdminAction(
+      req,
+      'DELETE',
+      'Material',
+      materialId,
+      `Xóa tài liệu học tập: "${existing.title}"`,
+      { oldData: existing }
+    );
 
     res.status(200).json({
       message: `Đã xóa tài liệu "${existing.title}" thành công`,

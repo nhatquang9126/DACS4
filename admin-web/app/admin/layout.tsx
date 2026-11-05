@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/AdminSidebar';
+import AdminHeader from '@/components/AdminHeader';
 import { ToastProvider } from '@/components/Toast';
 import { useAuth } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
@@ -33,9 +34,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <ToastProvider>
       <div className="flex min-h-screen bg-gray-50 text-gray-900">
         <AdminSidebar />
-        <main className="flex-1 min-w-0 overflow-y-auto">
-          {children}
-        </main>
+        <div className="flex-1 flex flex-col min-w-0">
+          <AdminHeader />
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
       </div>
     </ToastProvider>
   );
