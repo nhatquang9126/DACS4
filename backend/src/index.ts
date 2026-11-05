@@ -49,6 +49,9 @@ try {
 }
 });
 
-app.listen(Number(port), '0.0.0.0', () => {
+const server = app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Backend server is running on port ${port}`);
 });
+
+export default app;
+export { server };

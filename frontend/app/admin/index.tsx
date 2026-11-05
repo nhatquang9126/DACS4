@@ -10,8 +10,13 @@ import {
   Alert,
   Modal,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import AdminDashboard from '../../src/admin/AdminDashboard';
+import { useAuth } from '../../src/context/AuthContext';
+import { getBaseUrl, getStoredToken } from '../../src/api/axiosClient';
+
 import {
   ArrowLeft,
   Users,

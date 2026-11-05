@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
-  user?: { id: number; role: string };
+  user?: { id: number; role: string; email?: string };
 }
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
@@ -33,3 +33,6 @@ export const authorize = (allowedRoles: string[]) => {
     next();
   };
 };
+
+export const verifyAdmin = [authenticate, authorize(['ADMIN'])];
+

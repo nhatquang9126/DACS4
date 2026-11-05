@@ -226,3 +226,340 @@ export const getCourseDetail = async (req: AuthRequest, res: Response): Promise<
     res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
   }
 };
+
+// ==========================================
+// ADMIN CRUD, PHÂN TRANG & TÌM KIẾM MÔN HỌC
+// ==========================================
+
+const difficultyEnum = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']);
+
+const createCourseSchema = z.object({
+  code: z.string().trim().min(2, 'Mã môn học phải từ 2 ký tự trở lên'),
+  name: z.string().trim().min(3, 'Tên môn học phải từ 3 ký tự trở lên'),
+  description: z.string().trim().optional().nullable(),
+  credits: z.coerce.number().int().positive('Số tín chỉ phải lớn hơn 0').optional().nullable(),
+  difficulty: difficultyEnum.optional().default('BEGINNER'),
+});
+
+const updateCourseSchema = z.object({
+  code: z.string().trim().min(2, 'Mã môn học phải từ 2 ký tự trở lên').optional(),
+  name: z.string().trim().min(3, 'Tên môn học phải từ 3 ký tự trở lên').optional(),
+  description: z.string().trim().optional().nullable(),
+  credits: z.coerce.number().int().positive('Số tín chỉ phải lớn hơn 0').optional().nullable(),
+  difficulty: difficultyEnum.optional(),
+});
+
+// GET /api/admin/courses - Lấy danh sách môn học kèm phân trang, tìm kiếm, lọc
+export const getCourses = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string, 10) || 10));
+    const skip = (page - 1) * limit;
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const difficulty = req.query.difficulty as string | undefined;
+
+    const isPostgres = process.env.DATABASE_URL?.startsWith('postgres') || false;
+    const searchFilter = (val: string) => ({
+      contains: val,
+      ...(isPostgres ? { mode: 'insensitive' as const } : {}),
+    });
+
+    const where: any = {};
+    if (search) {
+      where.OR = [
+        { code: searchFilter(search) },
+        { name: searchFilter(search) },
+      ];
+    }
+    if (difficulty && ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'].includes(difficulty)) {
+      where.difficulty = difficulty;
+    }
+
+    const [totalRecords, courses] = await Promise.all([
+      prisma.course.count({ where }),
+      prisma.course.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { id: 'desc' },
+        include: {
+          _count: {
+            select: {
+              topics: true,
+              enrollments: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(totalRecords / limit) || 1;
+
+    res.status(200).json({
+      data: courses.map((c) => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        description: c.description,
+        difficulty: c.difficulty,
+        credits: c.credits,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        topics_count: c._count.topics,
+        enrollments_count: c._count.enrollments,
+      })),
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    console.error('Lỗi lấy danh sách môn học:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// GET /api/admin/courses/options - Lấy danh sách môn học rút gọn cho dropdown
+export const getCourseOptions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const courses = await prisma.course.findMany({
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        difficulty: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+    res.status(200).json(courses);
+  } catch (error) {
+    console.error('Lỗi lấy options môn học:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// GET /api/admin/courses/:id - Xem chi tiết môn học kèm cây chủ đề
+export const getCourseById = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const courseId = Number(req.params.id);
+    if (!Number.isInteger(courseId) || courseId <= 0) {
+      res.status(400).json({ message: 'ID môn học không hợp lệ' });
+      return;
+    }
+
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        topics: {
+          orderBy: { order_index: 'asc' },
+          include: {
+            materials: {
+              orderBy: { order_index: 'asc' },
+            },
+            quizzes: {
+              include: {
+                _count: {
+                  select: { questions: true, attempts: true },
+                },
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+            topics: true,
+          },
+        },
+      },
+    });
+
+    if (!course) {
+      res.status(404).json({ message: 'Không tìm thấy môn học' });
+      return;
+    }
+
+    res.status(200).json(course);
+  } catch (error) {
+    console.error('Lỗi xem chi tiết môn học:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// GET /api/admin/courses/:id/cascade-info - Cảnh báo số lượng liên kết trước khi xóa môn học
+export const getCourseCascadeInfo = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const courseId = Number(req.params.id);
+    if (!Number.isInteger(courseId) || courseId <= 0) {
+      res.status(400).json({ message: 'ID môn học không hợp lệ' });
+      return;
+    }
+
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        topics: {
+          select: {
+            id: true,
+            _count: {
+              select: {
+                materials: true,
+                quizzes: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            topics: true,
+            enrollments: true,
+            flashcards: true,
+          },
+        },
+      },
+    });
+
+    if (!course) {
+      res.status(404).json({ message: 'Không tìm thấy môn học' });
+      return;
+    }
+
+    const topicIds = course.topics.map((t) => t.id);
+    const materialsCount = course.topics.reduce((acc, t) => acc + t._count.materials, 0);
+    const quizzesCount = course.topics.reduce((acc, t) => acc + t._count.quizzes, 0);
+
+    const questionsCount = await prisma.question.count({
+      where: {
+        quiz: {
+          topic_id: { in: topicIds },
+        },
+      },
+    });
+
+    res.status(200).json({
+      course_id: course.id,
+      code: course.code,
+      name: course.name,
+      topics_count: course._count.topics,
+      materials_count: materialsCount,
+      quizzes_count: quizzesCount,
+      questions_count: questionsCount,
+      enrollments_count: course._count.enrollments,
+      flashcards_count: course._count.flashcards,
+      warning_message: `Xóa môn học "${course.name}" (${course.code}) sẽ xóa vĩnh viễn: ${course._count.topics} chủ đề, ${materialsCount} tài liệu học tập, ${quizzesCount} bài kiểm tra (${questionsCount} câu hỏi) và ảnh hưởng đến ${course._count.enrollments} học viên đang ghi danh!`,
+    });
+  } catch (error) {
+    console.error('Lỗi tính toán cascade info môn học:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// POST /api/admin/courses - Tạo môn học mới
+export const createCourse = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const data = createCourseSchema.parse(req.body);
+    const existing = await prisma.course.findUnique({ where: { code: data.code } });
+    if (existing) {
+      res.status(400).json({ message: `Môn học với mã "${data.code}" đã tồn tại trên hệ thống` });
+      return;
+    }
+
+    const course = await prisma.course.create({
+      data: {
+        code: data.code,
+        name: data.name,
+        description: data.description ?? null,
+        difficulty: data.difficulty || 'BEGINNER',
+        credits: data.credits ?? 3,
+      },
+    });
+
+    res.status(201).json(course);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Dữ liệu không hợp lệ', errors: error.issues });
+      return;
+    }
+    console.error('Lỗi tạo môn học:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// PUT /api/admin/courses/:id - Cập nhật môn học
+export const updateCourse = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const courseId = Number(req.params.id);
+    if (!Number.isInteger(courseId) || courseId <= 0) {
+      res.status(400).json({ message: 'ID môn học không hợp lệ' });
+      return;
+    }
+
+    const existing = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!existing) {
+      res.status(404).json({ message: 'Không tìm thấy môn học' });
+      return;
+    }
+
+    const data = updateCourseSchema.parse(req.body);
+
+    if (data.code && data.code !== existing.code) {
+      const codeDuplicate = await prisma.course.findUnique({ where: { code: data.code } });
+      if (codeDuplicate) {
+        res.status(400).json({ message: `Mã môn học "${data.code}" đã được sử dụng bởi môn học khác` });
+        return;
+      }
+    }
+
+    const updated = await prisma.course.update({
+      where: { id: courseId },
+      data: {
+        ...(data.code !== undefined ? { code: data.code } : {}),
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.difficulty !== undefined ? { difficulty: data.difficulty } : {}),
+        ...(data.credits !== undefined ? { credits: data.credits } : {}),
+      },
+    });
+
+    res.status(200).json(updated);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Dữ liệu không hợp lệ', errors: error.issues });
+      return;
+    }
+    console.error('Lỗi cập nhật môn học:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+  }
+};
+
+// DELETE /api/admin/courses/:id - Xóa môn học an toàn (Cascade)
+export const deleteCourse = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const courseId = Number(req.params.id);
+    if (!Number.isInteger(courseId) || courseId <= 0) {
+      res.status(400).json({ message: 'ID môn học không hợp lệ' });
+      return;
+    }
+
+    const existing = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!existing) {
+      res.status(404).json({ message: 'Không tìm thấy môn học cần xóa' });
+      return;
+    }
+
+    await prisma.course.delete({ where: { id: courseId } });
+
+    res.status(200).json({
+      message: `Đã xóa thành công môn học "${existing.name}" (${existing.code})`,
+      id: courseId,
+    });
+  } catch (error) {
+    console.error('Lỗi xóa môn học:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ nội bộ khi xóa môn học' });
+  }
+};

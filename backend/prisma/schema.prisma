@@ -8,11 +8,13 @@ datasource db {
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  email         String         @unique
+  id            Int                @id @default(autoincrement())
+  email         String             @unique
   password_hash String
-  role          String         @default("STUDENT")
-  created_at    DateTime       @default(now())
+  role          String             @default("STUDENT")
+  status        String             @default("ACTIVE")   // ACTIVE, LOCKED, DISABLED
+  is_locked     Boolean            @default(false)
+  created_at    DateTime           @default(now())
   enrollments   Enrollment[]
   tasks         Task[]
   studySessions StudySession[] 
@@ -22,6 +24,8 @@ model User {
   tutorSessions TutorSession[]
   flashcards    Flashcard[]
   learningGoals LearningGoal[]
+  auditLogs     AuditLog[]
+  notifications UserNotification[]
 }
 
 model LearningGoal {
@@ -42,8 +46,11 @@ model Course {
   id          Int          @id @default(autoincrement())
   code        String       @unique
   name        String
+  description String?      @db.Text
   difficulty  String       @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
   credits     Int?         @default(3)          // Giữ trường tương thích cho dữ liệu cũ
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @default(now()) @updatedAt
   enrollments Enrollment[]
   topics      Topic[]
   flashcards  Flashcard[]
@@ -129,15 +136,16 @@ model Recommendation {
 }
 
 model Topic {
-  id          Int        @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   course_id   Int
   title       String
-  description String?    @db.Text
-  order_index Int        @default(0)
-  created_at  DateTime   @default(now())
-  course      Course     @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  description String?        @db.Text
+  order_index Int            @default(0)
+  created_at  DateTime       @default(now())
+  course      Course         @relation(fields: [course_id], references: [id], onDelete: Cascade)
   materials   Material[]
   quizzes     Quiz[]
+  sections    TopicSection[]
 
   @@index([course_id])
 }
@@ -150,20 +158,23 @@ enum MaterialType {
 }
 
 model Material {
-  id           Int          @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   topic_id     Int
+  section_id   Int?
   title        String
-  type         MaterialType @default(READING)
-  content_type String       @default("MARKDOWN") // Giữ tương thích dữ liệu cũ
-  content      String       @db.LongText
-  file_url     String?      @db.Text
-  reading_time Int?         @default(5) // Thời gian đọc ước tính (phút)
-  order_index  Int          @default(0)
-  created_at   DateTime     @default(now())
-  updated_at   DateTime     @default(now()) @updatedAt
-  topic        Topic        @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+  type         MaterialType  @default(READING)
+  content_type String        @default("MARKDOWN") // Giữ tương thích dữ liệu cũ
+  content      String        @db.LongText
+  file_url     String?       @db.Text
+  reading_time Int?          @default(5) // Thời gian đọc ước tính (phút)
+  order_index  Int           @default(0)
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @default(now()) @updatedAt
+  topic        Topic         @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+  section      TopicSection? @relation(fields: [section_id], references: [id], onDelete: SetNull)
 
   @@index([topic_id])
+  @@index([section_id])
 }
 
 model Quiz {
@@ -291,4 +302,91 @@ model Flashcard {
   @@index([next_review])
 }
 
+model TopicSection {
+  id          Int        @id @default(autoincrement())
+  topic_id    Int
+  title       String
+  description String?    @db.Text
+  order_index Int        @default(0)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @default(now()) @updatedAt
+  topic       Topic      @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+  materials   Material[]
+
+  @@index([topic_id])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  user_id     Int?
+  user_email  String?
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, LOCK, UNLOCK
+  entity      String   // User, Course, Topic, Material, etc.
+  entity_id   String?
+  description String   @db.Text
+  ip_address  String?
+  user_agent  String?  @db.Text
+  old_data    String?  @db.LongText // JSON snapshot before change
+  new_data    String?  @db.LongText // JSON snapshot after change
+  created_at  DateTime @default(now())
+  user        User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([entity])
+  @@index([created_at])
+}
+
+model AILog {
+  id             Int      @id @default(autoincrement())
+  user_id        Int?
+  function_type  String   // CHAT_TUTOR, GENERATE_QUIZ, PREDICT_RISK, GENERATE_PLAN
+  request_data   String?  @db.Text // JSON
+  response_data  String?  @db.Text // JSON (truncated)
+  latency_ms     Int?     // Response time in milliseconds
+  tokens_used    Int?
+  status         String   @default("SUCCESS") // SUCCESS, ERROR, TIMEOUT
+  error_message  String?  @db.Text
+  created_at     DateTime @default(now())
+
+  @@index([function_type])
+  @@index([created_at])
+  @@index([status])
+}
+
+model AIConfig {
+  id              Int      @id @default(autoincrement())
+  key             String   @unique
+  value           String   @db.Text
+  description     String?
+  updated_by      String?
+  updated_at      DateTime @default(now()) @updatedAt
+}
+
+model SystemNotification {
+  id           Int                @id @default(autoincrement())
+  title        String
+  content      String             @db.Text
+  type         String             @default("INFO") // INFO, WARNING, SUCCESS, ERROR
+  target       String             @default("ALL")  // ALL, ADMIN, USER, or specific user_id
+  is_published Boolean            @default(false)
+  published_at DateTime?
+  expires_at   DateTime?
+  created_by   String?
+  created_at   DateTime           @default(now())
+  updated_at   DateTime           @default(now()) @updatedAt
+  reads        UserNotification[]
+}
+
+model UserNotification {
+  id              Int                @id @default(autoincrement())
+  user_id         Int
+  notification_id Int
+  is_read         Boolean            @default(false)
+  read_at         DateTime?
+  user            User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  notification    SystemNotification @relation(fields: [notification_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, notification_id])
+  @@index([user_id])
+}
 

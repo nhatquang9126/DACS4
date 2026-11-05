@@ -39,7 +39,11 @@ export default function LoginScreen() {
     try {
       const response = await axiosClient.post('/auth/login', { email, password });
       await login(response.data.token, response.data.user);
-      router.replace('/(tabs)');
+      if (response.data.user?.role === 'ADMIN') {
+        router.replace('/admin' as any);
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (error: any) {
       setErrorMsg(error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
     } finally {
